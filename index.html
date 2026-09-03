@@ -166,11 +166,64 @@
     .rule{margin:12px 0}
     .start-btn{margin-top:20px}
   }
+  /* ---------- PC: 盤面を縦長のストリップにし、右に情報パネルを置く ---------- */
+  #side{display:none}
+  body.wide #wrap{right:var(--sidew,300px)}
+  body.wide #glass{right:var(--sidew,300px)}
+  /* 盤面を一枚の板として浮かせる */
+  body.wide canvas{
+    box-shadow:0 0 0 1px var(--edge), 0 0 0 6px rgba(6,10,18,.9),
+      0 0 70px rgba(0,229,255,.07), 0 26px 70px rgba(0,0,0,.85)}
+  body.wide #side{
+    display:flex;flex-direction:column;
+    position:fixed;top:0;right:0;bottom:0;width:var(--sidew,300px);z-index:7;
+    padding:26px 20px 20px;
+    background:linear-gradient(180deg,rgba(14,21,36,.96),rgba(5,8,15,.98));
+    border-left:1px solid var(--edge);
+    box-shadow:inset 1px 0 0 rgba(190,232,255,.14),-18px 0 40px rgba(0,0,0,.6)}
+  .side-eyebrow{font-size:9px;letter-spacing:.5em;color:var(--cyan);margin-bottom:8px}
+  .side-logo{font-size:26px;font-weight:800;letter-spacing:.03em;color:var(--paper);line-height:1;
+    text-shadow:0 2px 0 #0a2a33,0 4px 0 #061a20,0 8px 18px rgba(0,229,255,.25)}
+  .side-logo span{color:var(--magenta);font-weight:300;
+    text-shadow:0 2px 0 #3a0a1e,0 4px 0 #240613}
+  .side-head{padding-bottom:18px;border-bottom:1px solid rgba(126,196,255,.16)}
+  .side-foot{margin-top:auto;padding-top:16px;border-top:1px solid rgba(126,196,255,.16)}
+  .side-keys{font-size:9.5px;line-height:2;letter-spacing:.06em;color:#6b7488}
+  .side-build{margin-top:8px;font-size:8px;letter-spacing:.3em;color:#3a4156}
+  /* HUDの中身を右パネルの中へ流し込む */
+  body.wide #hud{left:auto;right:0;top:118px;bottom:96px;width:var(--sidew,300px);
+    padding:0 20px;display:flex;flex-direction:column}
+  body.wide .hud-top{position:static;flex-direction:column;align-items:stretch;gap:10px;padding:0}
+  body.wide .hud-block,body.wide .hud-block.right{text-align:left;
+    clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%)}
+  body.wide #score,body.wide #mult{font-size:26px}
+  body.wide #pauseBtn{order:3;align-self:flex-start;margin-top:2px}
+  body.wide #gaugeLabel{position:static;transform:none;margin:18px 0 6px;text-align:left}
+  body.wide #gaugeWrap{position:static;transform:none;width:100%}
+  body.wide #bombHud{position:static;transform:none;margin-top:14px;justify-content:flex-start}
+  body.wide #burstBtn{position:static;width:100%;height:auto;border-radius:3px;
+    padding:14px 0;margin-top:14px;font-size:11px}
+  body.wide #burstBtn:active{transform:translateY(2px) scale(1)}
+  body.wide #muteBtn{left:auto;right:20px;bottom:20px;
+    width:calc(var(--sidew,300px) - 40px);text-align:center}
+  body.wide .side-foot{margin-bottom:44px}
+  body.wide #devHud{left:auto;right:calc(var(--sidew,300px) + 24px);transform:none;top:16px}
 </style>
 </head>
 <body>
 <div id="wrap"><canvas id="cv"></canvas></div>
 <div id="glass"></div>
+
+<aside id="side">
+  <div class="side-head">
+    <div class="side-eyebrow">RISK IS REWARD</div>
+    <div class="side-logo">GRAZE<span>//</span>LINE</div>
+  </div>
+  <div class="side-foot">
+    <div class="side-keys">ドラッグで移動 ／ SPACE・X で BREAK ／ ESC でポーズ</div>
+    <div class="side-build">BUILD 2026-09-03 v4</div>
+  </div>
+</aside>
 
 <div id="hud" class="hidden">
   <div class="hud-top">
@@ -204,14 +257,15 @@
     <span class="mg">敵弾</span>に<b>スレスレでかする</b>とゲージが溜まり、倍率が上昇（最大 <b>×8.0</b>）。被弾で全リセット。<br>
     <span style="color:#ff7a00">オレンジの弾</span>は自機狙い。<span class="mg">点滅する予告線</span>の先はレーザー。<br>
     敵は<b>崩れた像</b>で漂い、<b>撃つ直前に像が揃う</b>。揃ったら来る。<br>
-    全<b>5ステージ</b>。道中に<span class="mg">中ボス</span>（ステージごとに別機体）、最深部に<span class="mg">ボス</span>。<br>
+    全<b>6ステージ</b>。道中に<span class="mg">中ボス</span>、最深部に<span class="mg">ボス</span>。<br>
+    最終ステージには<span style="color:var(--gold)">耐久弾幕</span>——倒せない相手を60秒間、避け切る。<br>
     追い詰められたら <b>BREAK</b>（Space / X / 右下のボタン / 二本目の指でタップ）。<br>
     金の<span style="color:var(--gold)">「H」</span>で<span style="color:var(--gold)">追尾弾</span>が8秒。
     <span class="mg">50,000 / 200,000 / 500,000 / 1,000,000</span> 点で残機+1。
   </div>
   <button class="start-btn" id="startBtn">START</button>
   <button id="devBtn">DEV MODE ▸</button>
-  <div style="margin-top:14px;font-size:8px;letter-spacing:.3em;color:#3a4156">BUILD 2026-09-03 v2.1</div>
+  <div style="margin-top:14px;font-size:8px;letter-spacing:.3em;color:#3a4156">BUILD 2026-09-03 v4</div>
 </div>
 
 <div id="devHud" class="hidden">
@@ -248,28 +302,48 @@
 <button id="muteBtn">SOUND ON</button>
 
 <script>
-console.log('GRAZE//LINE build 2026-09-03 v2.1 (portrait / dimensional / data-entity enemies / 5 midbosses)');
+console.log('GRAZE//LINE build 2026-09-03 v4 (6 stages + endurance / PC side panel / dimensional / data-entity enemies / 5 midbosses)');
 (() => {
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
 let W=0,H=0,DPR=1,PORTRAIT=false;
+const SIDEW=300;                                   // 右パネルの幅(CSSにも同じ値を流す)
+const PLAY_ASPECT=0.62;                            // PCでの盤面の縦横比(細長い縦画面)
+let WIDE=false, cvOX=0, cvOY=0;                    // cvOX/OY: 盤面の左上位置(入力座標の補正)
+const mqWide = (window.matchMedia && window.matchMedia('(min-width:900px)')) || null;
 let ready=false;                                   // reset()完了フラグ(初回resizeの参照を防ぐ)
 const COARSE = (window.matchMedia && window.matchMedia('(pointer:coarse)').matches) || false;
 let LOWFX=false;                                   // 描画負荷の自動軽減
 // 盤面の上下マージン: HUDとBREAKボタンの下に自機が隠れないようにする
-function padTop(){ return COARSE ? 92 : 62; }
-function padBottom(){ return COARSE ? 74 : 34; }
+function padTop(){ return WIDE ? 26 : (COARSE ? 92 : 62); }
+function padBottom(){ return WIDE ? 26 : (COARSE ? 74 : 34); }
 function resize(){
   const vv = window.visualViewport;
-  const nw = Math.round(vv ? vv.width  : window.innerWidth);
-  const nh = Math.round(vv ? vv.height : window.innerHeight);
-  if(nw<=0||nh<=0) return;
+  const vw = Math.round(vv ? vv.width  : window.innerWidth);
+  const vh = Math.round(vv ? vv.height : window.innerHeight);
+  if(vw<=0||vh<=0) return;
   const oldW=W, oldH=H;
   DPR = Math.min(window.devicePixelRatio||1, LOWFX?1.5:2);
-  W=nw; H=nh; PORTRAIT = H>=W;
+  // 広い画面(PC)では盤面を縦長に切り出し、余った右側を情報パネルにする
+  WIDE = mqWide ? mqWide.matches : (vw>=900);
+  document.documentElement.style.setProperty('--sidew', SIDEW+'px');
+  document.body.classList.toggle('wide', WIDE);
+  if(WIDE){
+    const availW = vw - SIDEW - 36;                // パネル幅と左右の余白を引いた残り
+    H = vh;
+    W = Math.round(Math.min(H*PLAY_ASPECT, availW));
+    if(W < 260) W = Math.max(220, availW);         // 極端に横が狭いときの保険
+  }else{
+    W = vw; H = vh;
+  }
+  PORTRAIT = H>=W;
   cv.width = Math.round(W*DPR); cv.height = Math.round(H*DPR);
   cv.style.width = W+'px'; cv.style.height = H+'px';
   ctx.setTransform(DPR,0,0,DPR,0,0);
+  // 盤面が画面いっぱいでなくなるので、入力座標の原点を控えておく
+  if(cv.getBoundingClientRect){
+    const rc=cv.getBoundingClientRect(); cvOX=rc.left; cvOY=rc.top;
+  }else{ cvOX=0; cvOY=0; }
   // アドレスバーの伸縮や画面回転でも、自機と背景の位置関係を保つ
   if(ready && oldW>0 && oldH>0){
     const sx=W/oldW, sy=H/oldH;
@@ -279,6 +353,10 @@ function resize(){
 }
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', ()=>setTimeout(resize,120));
+if(mqWide){
+  if(mqWide.addEventListener) mqWide.addEventListener('change', resize);
+  else if(mqWide.addListener) mqWide.addListener(resize);
+}
 if(window.visualViewport){
   window.visualViewport.addEventListener('resize', resize);
   window.visualViewport.addEventListener('scroll', resize);
@@ -358,20 +436,33 @@ const EXTENDS=[50000, 200000, 500000, 1000000]; // 残機+1のスコア閾値
 // ===== 全5ステージ定義 =====
 // waves: ボス含む総ウェーブ数 / bossBars: ボスHPゲージ本数
 // curve: 通常ウェーブの強度。0.6台は「静」の凪、1.3以上は「動」のピーク
+// 各ステージの長さは従来の約1.5倍。基準は「通常ウェーブ数」(28 → 44 波)。
+// 総ウェーブ数で1.5倍にすると、ボスと中ボスの固定分だけ通常ウェーブが増えすぎるため。
+// midAt は配列も取れる(STAGE 6 は中ボスが2体)。rematch がある場合、その中ボスは
+// 過去のステージのボスが再来する(数値は bossType)。
 const STAGE_DEF=[
-  {waves:5,  bossBars:2,  midAt:3, curve:[0.7, 1.0, 0.85, 1.2]},
-  {waves:6,  bossBars:3,  midAt:4, curve:[0.7, 1.0, 1.2, 0.7, 1.3]},
-  {waves:7,  bossBars:5,  midAt:4, curve:[0.7, 1.0, 1.25, 0.65, 1.1, 1.4]},
-  {waves:9,  bossBars:7,  midAt:5, curve:[0.7, 1.0, 1.2, 1.35, 0.6, 1.0, 1.3, 1.5]},
-  {waves:11, bossBars:10, midAt:6, curve:[0.7, 1.0, 1.2, 0.65, 1.15, 1.35, 0.6, 1.2, 1.45, 1.6]}
+  {waves:7,  bossBars:2,  midAt:4, curve:[0.7, 0.9, 1.05, 1.0, 0.85, 1.25]},
+  {waves:8,  bossBars:3,  midAt:5, curve:[0.7, 1.0, 1.15, 0.75, 1.0, 0.9, 1.35]},
+  {waves:10, bossBars:5,  midAt:6, curve:[0.7, 1.0, 1.25, 0.65, 1.2, 1.0, 0.85, 1.15, 1.4]},
+  {waves:13, bossBars:7,  midAt:7, curve:[0.7, 1.0, 1.2, 0.65, 1.15, 1.35, 1.0, 0.7, 1.1, 1.3, 0.75, 1.5]},
+  {waves:16, bossBars:10, midAt:9, curve:[0.7, 1.0, 1.2, 0.65, 1.15, 1.35, 0.6, 1.25,
+                                          1.0, 0.85, 1.2, 1.4, 0.65, 1.3, 1.6]},
+  // STAGE 6: 最深部。中ボスは過去のボス2体(多層曼荼羅・星環)、最終ボスは終端コア。
+  {waves:19, bossBars:12, midAt:[7,13], rematch:[2,3],
+   curve:[0.8, 1.1, 1.3, 0.7, 1.35, 1.5, 1.0,
+          0.85, 1.25, 1.45, 0.7, 1.4, 1.0,
+          0.9, 1.35, 1.5, 0.75, 1.6]}
 ];
+// ボスの通称(HUDの表示に使う)
+const BOSS_NAMES=['三翼','双環体','多層曼荼羅','星環','連環体','終端コア'];
+const ENDURE_SEC=60;                 // 最終ボスの耐久弾幕の長さ(秒)
 
 function reset(){
   S.t=0;S.score=0;S.mult=1;S.maxMult=1;S.grazeCount=0;S.gauge=0;
   S.lives=3;S.wave=0;S.waveT=0;S.shake=0;S.inv=0;S.grazeFlash=0;
   S.slowT=0;S.calmT=0;S.bossActive=false;S.homingT=0;
   S.spawnQueue=0;S.squadNum=0;S.squadBeat=0;S.squadTimeout=0;S.extendIdx=0;
-  S.waveRestT=0;S.bossWarnT=0;
+  S.waveRestT=0;S.bossWarnT=0;S.rematchType=null;
   S.stage=1;S.stageWave=0;S.waveIntensity=1;S.cleared=false;
   S.bombs=2; bursts=[]; items=[]; markers=[]; lasers=[];
   player = {x:W/2, y:H*0.8, tx:W/2, ty:H*0.8, r:5, grazeR:34, fireT:0, trail:[]};
@@ -392,13 +483,13 @@ function setTarget(cx,cy){
 // タッチは「なぞった分だけ動く」相対操作。指の下に自機が隠れず、触れた瞬間に飛ばない。
 cv.addEventListener('pointerdown',e=>{
   if(S.demo) return;
-  if(e.pointerType==='mouse'){ setTarget(e.clientX,e.clientY); return; }
+  if(e.pointerType==='mouse'){ setTarget(e.clientX-cvOX, e.clientY-cvOY); return; }
   if(dragId!==null){ doBurst(); return; }   // 二本目の指はBREAK
   dragId=e.pointerId; lastPX=e.clientX; lastPY=e.clientY;
 });
 window.addEventListener('pointermove',e=>{
   if(!S.running || S.demo) return;
-  if(e.pointerType==='mouse'){ setTarget(e.clientX,e.clientY); return; }
+  if(e.pointerType==='mouse'){ setTarget(e.clientX-cvOX, e.clientY-cvOY); return; }
   if(e.pointerId!==dragId) return;
   const dx=(e.clientX-lastPX)*TOUCH_GAIN, dy=(e.clientY-lastPY)*TOUCH_GAIN;
   lastPX=e.clientX; lastPY=e.clientY;
@@ -417,27 +508,41 @@ function spawnWave(){
   S.wave++;
   const def = STAGE_DEF[S.stage-1];
   const isBoss = S.stageWave >= def.waves;
-  const isMid = S.stageWave === def.midAt;
+  const mids = Array.isArray(def.midAt) ? def.midAt : [def.midAt];
+  const midIdx = mids.indexOf(S.stageWave);       // 何体目の中ボスか(-1なら通常ウェーブ)
+  const reType = (midIdx>=0 && def.rematch) ? def.rematch[midIdx] : null;
   document.getElementById('wave').textContent =
-    'STAGE '+S.stage+'/5 — '+(isBoss ? 'BOSS'
-      : isMid ? 'MID-BOSS ' + (MIDBOSS_NAMES[Math.min(S.stage-1,MIDBOSS_NAMES.length-1)]||'')
+    'STAGE '+S.stage+'/'+STAGE_DEF.length+' — '+(isBoss ? 'BOSS'
+      : midIdx>=0 ? (reType!=null
+          ? 'MID-BOSS ' + (BOSS_NAMES[reType]||'') + ' 再来'
+          : 'MID-BOSS ' + (MIDBOSS_NAMES[Math.min(S.stage-1,MIDBOSS_NAMES.length-1)]||''))
       : 'WAVE '+S.stageWave+'/'+def.waves);
   if(isBoss){
     S.bossActive=true;
+    S.rematchType=null;          // 中ボスが飛ばされた場合に備え、必ず消してから本ボスへ
     S.spawnQueue=0;
     S.bossWarnT=1.8; // WARNING演出: 静寂と緊張の溜め
     SFX.warn();
     return;
   }
-  if(isMid){
-    spawnMidBoss();
+  if(midIdx>=0){
     S.spawnQueue=0;
+    if(reType!=null){
+      // 過去のボスが中ボスとして立ちはだかる。演出はボスと同じ WARNING を挟む
+      S.bossActive=true;
+      S.rematchType=reType;
+      S.bossWarnT=1.8;
+      SFX.warn();
+    }else{
+      spawnMidBoss();
+    }
     return;
   }
   // 敵総数: ステージ基礎値 × そのウェーブの強度(静の凪と動のピーク)
   const intensity = def.curve[Math.min(S.stageWave-1, def.curve.length-1)] || 1;
   S.waveIntensity = intensity;
-  S.spawnQueue = Math.min(Math.round((7 + (S.stage-1)*4) * intensity), 36);
+  // STAGE 6 は同時展開の上限も引き上げる(それ以下のステージは 36 のまま)
+  S.spawnQueue = Math.min(Math.round((7 + (S.stage-1)*4) * intensity), S.stage>=6 ? 44 : 36);
   S.squadNum = 0;
   S.squadBeat = 0.5;
   S.squadTimeout = 9;
@@ -631,19 +736,34 @@ function spawnBossNow(){
   const stage = S.stage;
   const def = STAGE_DEF[stage-1];
   const perBar = 80 + stage*15;          // ゲージ1本あたりのHP
+  if(S.rematchType!=null){
+    // 中ボス枠での再来: 本人の弾幕はそのまま、ゲージ本数を絞って関門の長さにする
+    const bt=S.rematchType;
+    const bars=3, hp=bars*perBar;
+    enemies.push({
+      kind:'boss', rematch:true, x:W/2, y:-80,
+      hp, maxHp:hp, perBar, bossBars:bars,
+      r: bt===4 ? 50 : 42,
+      t:0, fireT:1.2, dead:false,
+      stage, bossType:bt, purged:false
+    });
+    S.rematchType=null;
+    return;
+  }
   const hp = def.bossBars * perBar;
   enemies.push({
     kind:'boss', x:W/2, y:-80,
     hp, maxHp: hp, perBar, bossBars: def.bossBars,
-    r: stage===5 ? 54 : 44,              // 最終ボスは大型
+    r: stage>=6 ? 58 : stage===5 ? 54 : 44,   // 最深部のボスほど大型
     t:0, fireT:1.2, dead:false,
-    stage, bossType: stage-1, purged:false
+    stage, bossType: Math.min(stage-1, BOSS_NAMES.length-1), purged:false
   });
 }
 
 function spawnEnemy(){
   const stage = S.stage;
-  const hard = Math.min(0.45 + (stage-1)*0.22, 1.4);
+  // STAGE 6 は上限を引き上げる(STAGE 5 までは 1.4 に届かないので影響しない)
+  const hard = Math.min(0.45 + (stage-1)*0.22, stage>=6 ? 1.6 : 1.4);
   // ステージが進むほど危険な敵種の比率が上がる(STAGE 2〜: 分裂型と機雷が混入)
   const spinnerP = Math.min(0.12 + (stage-1)*0.04, 0.26);
   const aimerP   = Math.min(0.24 + (stage-1)*0.03, 0.34);
@@ -692,7 +812,7 @@ function spawnEnemy(){
 
 function enemyFire(e){
   const stage = (e.stage||1);
-  const hard = Math.min(0.45 + (stage-1)*0.22, 1.4);
+  const hard = Math.min(0.45 + (stage-1)*0.22, stage>=6 ? 1.6 : 1.4);
   const sp = 95 + hard*95;
   if(e.kind==='drift'){
     // 中弾の3-way → 後半は5-wayファン
@@ -1054,8 +1174,38 @@ const BOSS_SETS=[
   [P.twinSpiral,  P.palmLasers,  P.palmPulse,    P.burst3],                  // II:  人型 — 双掌の武術
   [P.clubSweep,   P.flower,      P.laserFan,     P.oniStomp],                // III: 鬼 — 金棒と曼荼羅
   [P.pentagram,   P.batWave,     P.crossLasers,  P.spiral4],                 // IV:  悪魔 — 魔法陣と群れ
-  [P.serpentWave, P.pearls,      P.dragonBreath, P.heavenPillars, P.ring]    // V:   龍 — 波と珠と天柱
+  [P.serpentWave, P.pearls,      P.dragonBreath, P.heavenPillars, P.ring],   // V:   連環体 — 波と珠と天柱
+  // VI: 終端コア — 歴代で最も苛烈な型を並べた最終セット
+  [P.spiral4,     P.crossLasers, P.serpentWave,  P.heavenPillars, P.pearls]
 ];
+
+// ===== 耐久弾幕: 本体は無敵になり中央へ。ひたすら避け続ける ENDURE_SEC 秒 =====
+// 10秒ごとに型が替わる。狙い撃ちではなく、読める幾何の弾幕で構成する。
+const ENDURE_SEQ=[P.spiral2, P.ring, P.rain, P.flower, P.pentagram, P.spiral4];
+function endureFire(e){
+  const span=ENDURE_SEC/ENDURE_SEQ.length;
+  const idx=Math.min(Math.floor((ENDURE_SEC-e.endureT)/span), ENDURE_SEQ.length-1);
+  if(idx!==e.endIdx){ e.endIdx=idx; e.fireT=0.9; return; }  // 型の切れ目にひと呼吸
+  e.rage=0.5; e.dz=1.25;                 // 耐久中は密度を固定(HPに引きずられない)
+  ENDURE_SEQ[idx](e, 150, 3);
+}
+function startEndure(e){
+  e.endureT=ENDURE_SEC; e.endIdx=-1; e.invul=true;
+  eBullets.length=0; lasers.length=0;
+  S.shake=12; SFX.warn();
+  popup(W/2, H*0.3, 'ENDURE '+ENDURE_SEC+'s', GOLD);
+}
+function endEndure(e){
+  e.endureT=0; e.endured=true; e.invul=false;
+  e.purged=true;                          // 耐え切った直後に外殻パージ(最終形態へ)
+  eBullets.length=0; lasers.length=0;
+  const gain=Math.round(5000*S.mult);
+  S.score+=gain;
+  popup(W/2, H*0.3, 'SURVIVED +'+gain, GOLD);
+  burst(e.x,e.y,GOLD,36,300);
+  if(S.bombs<3){ S.bombs++; popup(W/2, H*0.3+26, 'BREAK +1', CYAN); }
+  S.shake=12; SFX.boss(); e.fireT=1.6;
+}
 
 function bossFire(e){
   const lv = (e.stage||1)-1; // 0〜4
@@ -1064,8 +1214,8 @@ function bossFire(e){
   e.rage = (e.bossBars>1) ? (e.bossBars-rem)/(e.bossBars-1) : 0;
   e.dz = 1 + e.rage*0.6; // 密度係数(パターン側が参照)
   const sp = (110 + Math.min(0.5+lv*0.2, 1.4)*70) * (1 + e.rage*0.22);
-  // 各ボスは自分の形に特化した固有セットを使う
-  const set = BOSS_SETS[Math.min(lv, BOSS_SETS.length-1)];
+  // 各ボスは自分の形に特化した固有セットを使う(再来したボスも自分の弾幕を持ち込む)
+  const set = BOSS_SETS[Math.min(e.bossType||0, BOSS_SETS.length-1)];
   const phase = Math.floor(e.t/6)%set.length; // 6秒ごとにパターン切替
   if(phase!==e.lastPhase){
     e.lastPhase=phase;
@@ -1150,6 +1300,21 @@ function mineExplode(e){
   burst(e.x,e.y,MAGENTA,16,190);
   S.shake=Math.max(S.shake,5);
   SFX.boom();
+}
+
+// 再来した中ボスの撃破: ステージは進めず、その場でウェーブを再開する
+function rematchDown(e){
+  SFX.boss();
+  S.bossActive=false; S.shake=11;
+  const gain=Math.round(1500*S.mult);
+  S.score+=gain;
+  popup(e.x,e.y,'+'+gain,GOLD);
+  burst(e.x,e.y,MAGENTA,30,280);
+  burst(e.x,e.y,GOLD,18,200);
+  eBullets.length=0; lasers.length=0;
+  items.push({x:e.x,y:e.y,vy:55,t:0});
+  if(S.bombs<3){ S.bombs++; popup(e.x,e.y+24,'BREAK +1',CYAN); }
+  S.waveRestT=1.6;
 }
 
 function bossDown(e){
@@ -1660,16 +1825,33 @@ function update(dt){
         SFX.boom();
         e.fireT=Math.max(e.fireT,0.9); // 段階の切れ目にひと呼吸
       }
-      if(!e.purged && e.hp<=e.maxHp*0.5){
-        e.purged=true; // 外殻パージ: コア露出+攻撃加速
+      // 最終ボス: 半分削ったところで耐久弾幕へ移行する
+      if(e.bossType===5 && !e.rematch && !e.endured && e.endureT===undefined
+         && e.hp<=e.maxHp*0.5){
+        startEndure(e);
+      }
+      if(e.endureT>0){
+        e.endureT-=dt;
+        if(e.endureT<=0) endEndure(e);
+      }
+      // 外殻パージ: 最終ボスだけは耐久を耐え切った時点で行う
+      if(!e.purged && e.hp<=e.maxHp*0.5 && e.bossType!==5){
+        e.purged=true;
         burst(e.x,e.y,MAGENTA,30,280);
         burst(e.x,e.y,PAPER,16,200);
         S.shake=Math.max(S.shake,8);
         popup(e.x,e.y-64,'SHELL PURGE',GOLD);
       }
-      e.y += (H*0.18 - e.y)*Math.min(dt*1.4,1);
-      e.x = W/2 + Math.sin(e.t*0.5)*(W*0.24);
-      if(e.fireT<=0 && e.y>H*0.08) bossFire(e);
+      if(e.endureT>0){
+        // 耐久中は画面中央に居座る(透明な本体を中心に全方位へ撒く)
+        e.x += (W/2 - e.x)*Math.min(dt*2.2,1);
+        e.y += (H*0.42 - e.y)*Math.min(dt*2.2,1);
+        if(e.fireT<=0) endureFire(e);
+      }else{
+        e.y += (H*0.18 - e.y)*Math.min(dt*1.4,1);
+        e.x = W/2 + Math.sin(e.t*0.5)*(W*0.24);
+        if(e.fireT<=0 && e.y>H*0.08) bossFire(e);
+      }
     }else{
       if(e.edge==='left'||e.edge==='right'){
         // 横入り: 横断しながら上下に揺れる(画面外へ抜けたら退場)
@@ -1700,8 +1882,8 @@ function update(dt){
           : Math.max(rnd(1.0,1.8) - (st-1)*0.12, 0.5)) * ease;
       }
     }
-    // collide with player bullets
-    for(const b of bullets){
+    // collide with player bullets(耐久中の本体は無敵で、弾はすり抜ける)
+    for(const b of (e.invul ? [] : bullets)){
       if(b.dead)continue;
       const dx=e.x-b.x,dy=e.y-b.y;
       if(dx*dx+dy*dy < (e.r+b.r)*(e.r+b.r)){
@@ -1709,7 +1891,7 @@ function update(dt){
         particles.push({x:b.x,y:b.y,vx:rnd(-40,40),vy:rnd(-80,-20),life:.2,max:.2,color:PAPER});
         if(e.hp<=0){
           e.dead=true;
-          if(e.kind==='boss'){ bossDown(e); }
+          if(e.kind==='boss'){ e.rematch ? rematchDown(e) : bossDown(e); }
           else{
             const gain = Math.round(100*S.mult);
             S.score+=gain;
@@ -2277,6 +2459,8 @@ function draw(){
       }
       ctx.restore();
       ctx.lineWidth=2.2;
+      // 耐久中: 本体は透明化し、中央に亡霊のように浮かぶ
+      if(e.endureT>0) ctx.globalAlpha=0.26+Math.sin(e.t*3)*0.06;
 
       if(e.bossType===0){
         // ===== I: 散開する三翼 — 翼板が羽ばたき、扇状の弾を撒く =====
@@ -2410,7 +2594,7 @@ function draw(){
         ctx.beginPath(); ctx.arc(0,0,e.r*0.15,0,TAU); ctx.fill();
         ctx.shadowBlur=LOWFX?0:20;
 
-      }else{
+      }else if(e.bossType===4){
         // ===== V: 連環体 — 後方へ連なる分節と、流れを吐く頭部 =====
         for(let i=5;i>=1;i--){
           const rr=e.r*(0.84-i*0.10);
@@ -2444,10 +2628,63 @@ function draw(){
         ctx.fillRect(-e.r*0.30,-e.r*0.16,3,7);
         ctx.fillRect( e.r*0.30-3,-e.r*0.16,3,7);
         ctx.shadowBlur=LOWFX?0:20;
+
+      }else{
+        // ===== VI: 終端コア — 露出した核を、公転する刃と二重の環が守る =====
+        const fast = e.endureT>0 ? 2.2 : 1;         // 耐久中は全体が速く回る
+        for(const rg of [[1.50, 1,10],[1.24,-1,7]]){
+          ctx.save(); ctx.rotate(rg[1]*e.t*0.35*spd*fast);
+          ctx.strokeStyle=`rgba(${cs.rgb},0.5)`; ctx.lineWidth=2.4;
+          ngonPath(rg[2], e.r*rg[0], 0); ctx.stroke();
+          ctx.restore();
+        }
+        ctx.save(); ctx.rotate(e.t*0.8*spd*fast);
+        for(let i=0;i<6;i++){                       // 公転する6枚の刃
+          ctx.save(); ctx.rotate(i/6*TAU); ctx.translate(0,-e.r*0.92);
+          const blade=()=>{ctx.beginPath();
+            ctx.moveTo(-e.r*0.11,-e.r*0.34); ctx.lineTo(e.r*0.11,-e.r*0.34);
+            ctx.lineTo(e.r*0.20, e.r*0.34);  ctx.lineTo(-e.r*0.20, e.r*0.34); ctx.closePath();};
+          extrude(blade,5,cs.rgb);
+          drawSliced(blade,e.r*0.42,3,ampB*0.7,fg,edge,2,seedB+i*5);
+          ctx.restore();
+        }
+        ctx.restore();
+        const shell=()=>ngonPath(8,e.r*0.62,e.t*0.4);
+        extrude(shell,7,cs.rgb);
+        drawSliced(shell,e.r*0.62,4,ampB,fg,edge,2.4,seedB);
+        const cg=ctx.createRadialGradient(-e.r*0.12,-e.r*0.16,e.r*0.03, 0,0,e.r*0.44);
+        cg.addColorStop(0,'rgba(255,255,255,0.95)');
+        cg.addColorStop(0.42,`rgba(${cs.rgb},0.9)`);
+        cg.addColorStop(1,`rgba(${cs.rgb},0.12)`);
+        ctx.fillStyle=cg; ctx.shadowBlur=LOWFX?0:20;
+        ctx.beginPath(); ctx.arc(0,0,e.r*0.42,0,TAU); ctx.fill();
+        glitchGhost(shell,e.r,(e.glOn>0||flash)?5:2,seedB);
+        ctx.shadowBlur=LOWFX?0:20;
+      }
+
+      // 耐久の残り時間: 本体の周りを一周する環と、その下の秒数
+      if(e.endureT>0){
+        ctx.save();
+        ctx.globalAlpha=1;
+        const q=clamp(e.endureT/ENDURE_SEC,0,1), rr=e.r*1.95;
+        ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.lineWidth=4;
+        ctx.beginPath(); ctx.arc(0,0,rr,0,TAU); ctx.stroke();
+        ctx.strokeStyle=GOLD; ctx.lineWidth=4; ctx.lineCap='round';
+        ctx.shadowColor=GOLD; ctx.shadowBlur=LOWFX?0:12;
+        ctx.beginPath(); ctx.arc(0,0,rr,-Math.PI/2,-Math.PI/2+q*TAU); ctx.stroke();
+        ctx.shadowBlur=0; ctx.lineCap='butt';
+        ctx.fillStyle=GOLD; ctx.textAlign='center';
+        ctx.font='800 20px "Avenir Next","Helvetica Neue",sans-serif';
+        ctx.fillText(String(Math.ceil(e.endureT)), 0, rr+26);
+        ctx.font='700 9px "Avenir Next","Helvetica Neue",sans-serif';
+        ctx.fillStyle='rgba(255,209,102,0.75)';
+        ctx.fillText('ENDURE', 0, rr+41);
+        ctx.restore();
       }
 
       shards(14, e.r*1.65, cs.rgb, e.t*0.6, 3.4, seedB);
       ctx.restore();
+      if(e.endureT>0) continue;             // 耐久中は無敵なのでHPゲージは伏せる
       // HPゲージ: 現在の1本の減りと残り本数(×N)
       const perBar=e.perBar||e.maxHp, bw=110;
       const remBars=Math.max(1,Math.ceil(e.hp/perBar));
@@ -2789,6 +3026,7 @@ function devStart(){
 function devClearField(){
   enemies.length=0; eBullets.length=0; items.length=0; markers.length=0; lasers.length=0;
   S.spawnQueue=0; S.bossActive=false; S.calmT=0; S.bossWarnT=0; S.waveRestT=0;
+  S.rematchType=null;
 }
 function devNextWave(){
   devClearField();
@@ -2861,7 +3099,15 @@ window.addEventListener('keydown',e=>{
   if(S.dev && S.running && !S.paused){
     if(e.code==='KeyN') devNextWave();
     if(e.code==='KeyB') devNextBoss();
-    if(e.code==='KeyM'){ devClearField(); S.stageWave=STAGE_DEF[S.stage-1].midAt-1; spawnWave(); S.waveT=30; }
+    if(e.code==='KeyM'){
+      // 中ボスが複数ある場合は押すたびに次の中ボスへ
+      const md=STAGE_DEF[S.stage-1].midAt;
+      const list=Array.isArray(md)?md:[md];
+      const next=list.find(w=>w>S.stageWave);
+      devClearField();
+      S.stageWave=(next!==undefined?next:list[0])-1;
+      spawnWave(); S.waveT=30;
+    }
     if(e.code==='KeyF'){
       S.ffwd=!S.ffwd;
       devFf.classList.toggle('hidden',!S.ffwd);
