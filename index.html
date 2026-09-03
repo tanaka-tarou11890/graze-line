@@ -1,0 +1,2508 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>GRAZE//LINE</title>
+<meta name="description" content="操作は移動だけ。敵弾スレスレをかすめて倍率を上げる、リスクこそ報酬の弾幕シューティング。">
+<meta name="theme-color" content="#07080d">
+<meta property="og:title" content="GRAZE//LINE">
+<meta property="og:description" content="操作は移動だけ。敵弾スレスレをかすめて倍率を上げる、リスクこそ報酬の弾幕シューティング。">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2307080d'/%3E%3Cpath d='M32 8 L52 52 L32 41 L12 52 Z' fill='%2300e5ff'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --ink:#07080d;
+    --paper:#e8ecf2;
+    --cyan:#00e5ff;
+    --magenta:#ff2d78;
+    --gold:#ffd166;
+    --dim:#3a4156;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:var(--ink);overflow:hidden;
+    font-family:"Avenir Next","Helvetica Neue",Helvetica,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+    -webkit-user-select:none;user-select:none;touch-action:none}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  canvas{display:block;background:var(--ink)}
+  /* ---------- HUD ---------- */
+  #hud{position:fixed;inset:0;pointer-events:none;color:var(--paper)}
+  .hud-top{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;
+    padding:14px 18px;font-size:12px;letter-spacing:.18em}
+  .hud-block{text-align:left}
+  .hud-block.right{text-align:right}
+  .hud-label{font-size:9px;letter-spacing:.3em;color:var(--dim);margin-bottom:2px}
+  #score{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.06em}
+  #mult{font-size:22px;font-weight:700;color:var(--cyan);font-variant-numeric:tabular-nums;
+    transition:color .15s}
+  #mult.hot{color:var(--gold)}
+  #lives{font-size:16px;letter-spacing:.35em;color:var(--magenta)}
+  #wave{font-size:13px;color:var(--dim);letter-spacing:.25em}
+  #homingHud{font-size:10px;letter-spacing:.25em;color:var(--gold);margin-top:2px;min-height:13px}
+  /* graze gauge */
+  #gaugeWrap{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);
+    width:min(360px,70vw);height:3px;background:rgba(255,255,255,.08)}
+  #gauge{height:100%;width:0%;background:var(--cyan);transition:width .12s linear}
+  #gauge.hot{background:var(--gold);box-shadow:0 0 12px var(--gold)}
+  #bombHud{position:absolute;bottom:38px;left:50%;transform:translateX(-50%);
+    display:flex;align-items:center}
+  #bombs{font-size:13px;letter-spacing:.3em;color:var(--cyan)}
+  #burstBtn{position:absolute;bottom:64px;right:22px;pointer-events:auto;
+    width:74px;height:74px;border-radius:50%;border:1px solid var(--cyan);
+    background:rgba(0,229,255,.07);color:var(--cyan);font-size:10px;letter-spacing:.25em;
+    font-family:inherit;cursor:pointer;transition:transform .08s, opacity .2s;
+    -webkit-tap-highlight-color:transparent}
+  #burstBtn:active{transform:scale(.92);background:rgba(0,229,255,.25)}
+  #burstBtn.empty{opacity:.25;border-color:var(--dim);color:var(--dim)}
+  @media (hover:hover) and (pointer:fine){
+    #burstBtn{width:auto;height:auto;border-radius:4px;padding:8px 16px;bottom:18px;right:18px}
+  }
+  #gaugeLabel{position:absolute;bottom:30px;left:50%;transform:translateX(-50%);
+    font-size:9px;letter-spacing:.4em;color:var(--dim)}
+  /* ---------- screens ---------- */
+  .screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    color:var(--paper);background:rgba(7,8,13,.82);backdrop-filter:blur(2px);z-index:10}
+  .hidden{display:none!important}
+  .title-eyebrow{font-size:10px;letter-spacing:.6em;color:var(--cyan);margin-bottom:14px}
+  h1{font-size:clamp(40px,9vw,72px);font-weight:800;letter-spacing:.04em;line-height:1}
+  h1 .slash{color:var(--magenta);font-weight:300}
+  .rule{width:54px;height:1px;background:var(--dim);margin:26px 0}
+  .howto{font-size:12.5px;line-height:2.1;letter-spacing:.12em;color:#9aa3b8;text-align:center;max-width:520px;padding:0 24px}
+  .howto b{color:var(--cyan);font-weight:600}
+  .howto .mg{color:var(--magenta)}
+  .start-btn{pointer-events:auto;margin-top:34px;padding:14px 52px;border:1px solid var(--cyan);
+    background:transparent;color:var(--cyan);font-size:13px;letter-spacing:.45em;cursor:pointer;
+    transition:all .2s;font-family:inherit}
+  .start-btn:hover{background:var(--cyan);color:var(--ink);box-shadow:0 0 28px rgba(0,229,255,.45)}
+  .btn-row{display:flex;gap:16px;margin-top:34px}
+  .btn-row .start-btn{margin-top:0;padding:14px 38px}
+  .start-btn.sub{border-color:var(--dim);color:#9aa3b8}
+  .start-btn.sub:hover{background:var(--dim);color:var(--paper);box-shadow:none}
+  #pauseBtn{pointer-events:auto;align-self:flex-start;margin-top:2px;
+    width:34px;height:34px;border:1px solid var(--dim);border-radius:4px;
+    background:transparent;color:#9aa3b8;font-size:13px;cursor:pointer;font-family:inherit;
+    -webkit-tap-highlight-color:transparent}
+  #pauseBtn:hover{border-color:var(--paper);color:var(--paper)}
+  #muteBtn{position:fixed;bottom:18px;left:18px;z-index:30;
+    padding:7px 12px;border:1px solid var(--dim);border-radius:4px;
+    background:rgba(7,8,13,.6);color:#9aa3b8;font-size:9px;letter-spacing:.25em;
+    cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent}
+  #muteBtn.off{opacity:.5;text-decoration:line-through}
+  #bestTitle{margin-top:14px;font-size:11px;letter-spacing:.35em;color:var(--gold);
+    font-variant-numeric:tabular-nums}
+  #devBtn{pointer-events:auto;margin-top:18px;padding:6px 14px;
+    border:1px dashed var(--dim);background:transparent;color:var(--dim);
+    font-size:9px;letter-spacing:.35em;cursor:pointer;font-family:inherit}
+  #devBtn:hover{color:#9aa3b8;border-color:#9aa3b8}
+  #devHud{position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:5;
+    display:flex;gap:12px;align-items:center;pointer-events:none;
+    font-size:9px;letter-spacing:.2em;color:#9aa3b8;font-family:inherit}
+  .dev-badge{border:1px solid var(--gold);color:var(--gold);padding:2px 8px;letter-spacing:.3em}
+  #devFf{color:var(--cyan);font-weight:700}
+  .result-num{font-size:clamp(44px,10vw,84px);font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.04em}
+  .result-sub{display:flex;gap:40px;margin-top:18px;font-size:11px;letter-spacing:.25em;color:#9aa3b8}
+  .result-sub b{display:block;font-size:20px;color:var(--paper);margin-top:4px;font-variant-numeric:tabular-nums}
+  .best{margin-top:10px;font-size:10px;letter-spacing:.4em;color:var(--gold)}
+  @media (max-width:600px){
+    .hud-top{padding:10px 12px}
+    #score,#mult{font-size:17px}
+  }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="cv"></canvas></div>
+
+<div id="hud" class="hidden">
+  <div class="hud-top">
+    <div class="hud-block">
+      <div class="hud-label">SCORE</div>
+      <div id="score">0</div>
+      <div id="wave">WAVE 01</div>
+    </div>
+    <button id="pauseBtn">‖</button>
+    <div class="hud-block right">
+      <div class="hud-label">MULTIPLIER</div>
+      <div id="mult">×1.0</div>
+      <div id="lives">◆◆◆</div>
+      <div id="homingHud"></div>
+    </div>
+  </div>
+  <div id="gaugeLabel">GRAZE</div>
+  <div id="gaugeWrap"><div id="gauge"></div></div>
+  <div id="bombHud"><span class="hud-label" style="margin:0 8px 0 0">BREAK</span><span id="bombs">▲▲</span></div>
+  <button id="burstBtn">BREAK</button>
+</div>
+
+<div id="titleScreen" class="screen">
+  <div class="title-eyebrow">RISK IS REWARD</div>
+  <h1>GRAZE<span class="slash">//</span>LINE</h1>
+  <div id="bestTitle" class="hidden"></div>
+  <div class="rule"></div>
+  <div class="howto">
+    操作は<b>移動だけ</b>。ショットは自動。<br>
+    <span class="mg">敵弾</span>に<b>スレスレでかする</b>とゲージが溜まり、倍率が上昇。<br>
+    倍率は最大 <b>×8.0</b> — ただし被弾で全てリセット。<br>
+    <span style="color:#ff7a00">オレンジの菱形弾</span>はあなたを狙っている。<span class="mg">点滅する予告線</span>の先にはレーザー。<br>
+    全<b>5ステージ</b>、各最深部に<span class="mg">ボス</span>。<br>
+    追い詰められたら <b>BREAK</b>(Space / X / ボタン)— 全弾消去&スコア変換。ボス撃破で補充。<br>
+    敵が落とす<span style="color:var(--gold)">金の「H」</span>を拾うと<span style="color:var(--gold)">追尾弾</span>が8秒間追加発射。<br>
+    <span class="mg">50,000 / 200,000 / 500,000 / 1,000,000</span> 点で残機+1。
+  </div>
+  <button class="start-btn" id="startBtn">START</button>
+  <button id="devBtn">DEV MODE ▸</button>
+</div>
+
+<div id="devHud" class="hidden">
+  <span class="dev-badge">DEV</span>
+  <span id="devKeys">N: 次ウェーブ / M: 中ボス / B: 次ボス / F: 倍速 / ESC: ポーズ</span>
+  <span id="devFf" class="hidden">×3 FAST</span>
+</div>
+
+<div id="overScreen" class="screen hidden">
+  <div class="title-eyebrow" id="overEyebrow" style="color:var(--magenta)">SIGNAL LOST</div>
+  <div class="result-num" id="finalScore">0</div>
+  <div id="clearBonus" class="hidden" style="margin-top:6px;font-size:11px;letter-spacing:.3em;color:var(--gold)"></div>
+  <div class="result-sub">
+    <div>STAGE<b id="finalWave">1</b></div>
+    <div>MAX MULT<b id="finalMult">×1.0</b></div>
+    <div>GRAZE<b id="finalGraze">0</b></div>
+  </div>
+  <div class="best hidden" id="bestTag">NEW RECORD</div>
+  <div class="btn-row">
+    <button class="start-btn" id="retryBtn">RETRY</button>
+    <button class="start-btn sub" id="titleBtn">TITLE</button>
+  </div>
+</div>
+
+<div id="pauseScreen" class="screen hidden">
+  <div class="title-eyebrow">PAUSED</div>
+  <div class="btn-row">
+    <button class="start-btn" id="resumeBtn">RESUME</button>
+    <button class="start-btn sub" id="pauseTitleBtn">TITLE</button>
+  </div>
+</div>
+
+<button id="muteBtn">SOUND ON</button>
+
+<script>
+console.log('GRAZE//LINE build 2026-06-11a (5-stage / creature bosses)');
+(() => {
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let W=0,H=0,DPR=1;
+function resize(){
+  DPR = Math.min(window.devicePixelRatio||1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  cv.width = W*DPR; cv.height = H*DPR;
+  cv.style.width = W+'px'; cv.style.height = H+'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+window.addEventListener('resize', resize); resize();
+
+// ---------- helpers ----------
+const TAU = Math.PI*2;
+const rnd = (a,b)=>a+Math.random()*(b-a);
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const CYAN='#00e5ff', MAGENTA='#ff2d78', GOLD='#ffd166', PAPER='#e8ecf2';
+// ステージごとの敵カラー: マゼンタ→紫→深紅→真紅(敵地の奥へ)
+const STAGE_COLS=[
+  {st:'#ff2d78', fill:'rgba(255,45,120,0.12)', rgb:'255,45,120'},
+  {st:'#c44dff', fill:'rgba(196,77,255,0.12)', rgb:'196,77,255'},
+  {st:'#ff3b57', fill:'rgba(255,59,87,0.13)',  rgb:'255,59,87'},
+  {st:'#ff1f3d', fill:'rgba(255,31,61,0.14)',  rgb:'255,31,61'}
+];
+
+// ---------- audio (Web Audio API: オシレーター合成、外部ファイルなし) ----------
+let audioCtx=null, muted=false;
+try{ muted = localStorage.getItem('grazeline_mute')==='1'; }catch(e){}
+function ac(){
+  if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  return audioCtx;
+}
+function tone(freq, dur, type, vol, slide){
+  if(muted || (S.demo && !S.dev)) return; // デモ中は無音(DEVモードは鳴らす)
+  try{
+    const c=ac(), t=c.currentTime;
+    const o=c.createOscillator(), g=c.createGain();
+    o.type=type; o.frequency.setValueAtTime(freq,t);
+    if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(slide,1), t+dur);
+    g.gain.setValueAtTime(vol,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g).connect(c.destination);
+    o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+let lastGrazeSfx=0;
+const SFX={
+  shot(){ tone(880,0.045,'square',0.018,440); },
+  graze(){ // 連続グレイズで音が重なりすぎないよう間引き
+    if(S.t-lastGrazeSfx<0.05)return; lastGrazeSfx=S.t;
+    tone(2600,0.06,'sine',0.05,3400);
+  },
+  multUp(){ tone(660,0.12,'square',0.055,1320); setTimeout(()=>tone(990,0.15,'square',0.055,1980),80); },
+  burst(){ tone(220,0.5,'sawtooth',0.09,55); tone(1760,0.25,'sine',0.04,440); },
+  hit(){ tone(160,0.4,'sawtooth',0.1,40); },
+  boss(){ tone(110,0.7,'sawtooth',0.1,30); setTimeout(()=>tone(440,0.3,'square',0.06,1760),160); },
+  item(){ tone(1320,0.1,'sine',0.055,1980); },
+  boom(){ tone(150,0.35,'sawtooth',0.07,45); },
+  laser(){ tone(1900,0.4,'sawtooth',0.06,180); tone(380,0.35,'square',0.04,90); },
+  laserWarn(){ tone(330,0.55,'sine',0.04,990); }, // 予告線と同時の充填音
+  warn(){ // ボス警報: 低い二連ブザー
+    tone(196,0.3,'square',0.07,98);
+    setTimeout(()=>tone(196,0.3,'square',0.07,98),400);
+  },
+  extend(){ // 上昇アルペジオ
+    tone(523,0.1,'square',0.06,523);
+    setTimeout(()=>tone(659,0.1,'square',0.06,659),90);
+    setTimeout(()=>tone(784,0.1,'square',0.06,784),180);
+    setTimeout(()=>tone(1047,0.25,'square',0.07,1047),270);
+  }
+};
+
+// ---------- state ----------
+const S = {
+  running:false, t:0, score:0, mult:1, maxMult:1, grazeCount:0,
+  gauge:0, lives:3, wave:0, waveT:0, shake:0, hitStop:0, inv:0,
+  freezeT:0
+};
+let player, bullets, eBullets, enemies, particles, stars, popups, bursts, items, markers, lasers;
+const EXTENDS=[50000, 200000, 500000, 1000000]; // 残機+1のスコア閾値
+
+// ===== 全5ステージ定義 =====
+// waves: ボス含む総ウェーブ数 / bossBars: ボスHPゲージ本数
+// curve: 通常ウェーブの強度。0.6台は「静」の凪、1.3以上は「動」のピーク
+const STAGE_DEF=[
+  {waves:5,  bossBars:2,  midAt:3, curve:[0.7, 1.0, 0.85, 1.2]},
+  {waves:6,  bossBars:3,  midAt:4, curve:[0.7, 1.0, 1.2, 0.7, 1.3]},
+  {waves:7,  bossBars:5,  midAt:4, curve:[0.7, 1.0, 1.25, 0.65, 1.1, 1.4]},
+  {waves:9,  bossBars:7,  midAt:5, curve:[0.7, 1.0, 1.2, 1.35, 0.6, 1.0, 1.3, 1.5]},
+  {waves:11, bossBars:10, midAt:6, curve:[0.7, 1.0, 1.2, 0.65, 1.15, 1.35, 0.6, 1.2, 1.45, 1.6]}
+];
+
+function reset(){
+  S.t=0;S.score=0;S.mult=1;S.maxMult=1;S.grazeCount=0;S.gauge=0;
+  S.lives=3;S.wave=0;S.waveT=0;S.shake=0;S.inv=0;S.grazeFlash=0;
+  S.slowT=0;S.calmT=0;S.bossActive=false;S.homingT=0;
+  S.spawnQueue=0;S.squadNum=0;S.squadBeat=0;S.squadTimeout=0;S.extendIdx=0;
+  S.waveRestT=0;S.bossWarnT=0;
+  S.stage=1;S.stageWave=0;S.waveIntensity=1;S.cleared=false;
+  S.bombs=2; bursts=[]; items=[]; markers=[]; lasers=[];
+  player = {x:W/2, y:H*0.8, tx:W/2, ty:H*0.8, r:5, grazeR:34, fireT:0, trail:[]};
+  bullets=[];eBullets=[];enemies=[];particles=[];popups=[];
+  stars = Array.from({length:70},()=>({x:rnd(0,W),y:rnd(0,H),s:rnd(.4,1.6),v:rnd(20,90)}));
+}
+
+// ---------- input ----------
+let pointerDown=false;
+function setTarget(cx,cy){
+  player.tx = clamp(cx, 14, W-14);
+  player.ty = clamp(cy, 60, H-30);
+}
+cv.addEventListener('pointerdown',e=>{if(S.demo)return;pointerDown=true;setTarget(e.clientX,e.clientY-46);});
+window.addEventListener('pointermove',e=>{
+  if(!S.running || S.demo) return;
+  // タッチは押下中のみ、マウスは常時追従
+  if(e.pointerType==='mouse' || pointerDown) setTarget(e.clientX, e.clientY-(e.pointerType==='mouse'?0:46));
+});
+window.addEventListener('pointerup',()=>pointerDown=false);
+window.addEventListener('keydown',e=>{
+  if(e.code==='Space'||e.code==='KeyX'){e.preventDefault();if(!S.demo)doBurst();}
+});
+
+// ---------- enemies ----------
+function spawnWave(){
+  S.stageWave++;
+  S.wave++;
+  const def = STAGE_DEF[S.stage-1];
+  const isBoss = S.stageWave >= def.waves;
+  const isMid = S.stageWave === def.midAt;
+  document.getElementById('wave').textContent =
+    'STAGE '+S.stage+'/5 — '+(isBoss ? 'BOSS' : isMid ? 'MID-BOSS' : 'WAVE '+S.stageWave+'/'+def.waves);
+  if(isBoss){
+    S.bossActive=true;
+    S.spawnQueue=0;
+    S.bossWarnT=1.8; // WARNING演出: 静寂と緊張の溜め
+    SFX.warn();
+    return;
+  }
+  if(isMid){
+    spawnMidBoss();
+    S.spawnQueue=0;
+    return;
+  }
+  // 敵総数: ステージ基礎値 × そのウェーブの強度(静の凪と動のピーク)
+  const intensity = def.curve[Math.min(S.stageWave-1, def.curve.length-1)] || 1;
+  S.waveIntensity = intensity;
+  S.spawnQueue = Math.min(Math.round((7 + (S.stage-1)*4) * intensity), 36);
+  S.squadNum = 0;
+  S.squadBeat = 0.5;
+  S.squadTimeout = 9;
+}
+
+// 中ボスの弾幕: 3モードを巡回(精密ではなく圧で攻める)
+function midBossFire(e){
+  const sp = 100 + e.stage*12;
+  if(e.mode===0){
+    // 回転スポーク(6本腕)
+    for(let j=0;j<6;j++){
+      const a=e.spin+j*TAU/6;
+      eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.75,vy:Math.sin(a)*sp*0.75,r:3.5,grazed:false,kind:'sq'});
+    }
+    e.fireT=0.12;
+  }else if(e.mode===1){
+    // 自機狙いの3-wayショットガン
+    const a0=Math.atan2(player.y-e.y,player.x-e.x);
+    for(let i=-1;i<=1;i++){
+      eBullets.push({x:e.x,y:e.y,vx:Math.cos(a0+i*0.2)*(sp+50),vy:Math.sin(a0+i*0.2)*(sp+50),r:4,grazed:false,kind:'aim'});
+    }
+    e.fireT=0.5;
+  }else{
+    // 拡散リング(隙間つき)
+    const k=14, gap=Math.floor(rnd(0,k));
+    for(let i=0;i<k;i++){
+      if(Math.abs(i-gap)<=1) continue;
+      const a=i/k*TAU+e.spin*0.3;
+      eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.6,vy:Math.sin(a)*sp*0.6,r:4,grazed:false});
+    }
+    e.fireT=0.9;
+  }
+}
+
+function spawnMidBoss(){
+  const stage=S.stage;
+  // ザコより遥かに硬いが、本ボスのゲージは持たない関門
+  const hp = 40 + stage*22;
+  enemies.push({
+    kind:'midboss', x:W/2, y:-70,
+    hp, maxHp:hp, r:30,
+    t:0, fireT:1.4, dead:false, stage,
+    spin:0, mode:0, modeT:0
+  });
+  SFX.warn();
+}
+
+function spawnBossNow(){
+  const stage = S.stage;
+  const def = STAGE_DEF[stage-1];
+  const perBar = 80 + stage*15;          // ゲージ1本あたりのHP
+  const hp = def.bossBars * perBar;
+  enemies.push({
+    kind:'boss', x:W/2, y:-80,
+    hp, maxHp: hp, perBar, bossBars: def.bossBars,
+    r: stage===5 ? 54 : 44,              // 最終ボスは大型
+    t:0, fireT:1.2, dead:false,
+    stage, bossType: stage-1, purged:false
+  });
+}
+
+function spawnEnemy(){
+  const stage = S.stage;
+  const hard = Math.min(0.45 + (stage-1)*0.22, 1.4);
+  // ステージが進むほど危険な敵種の比率が上がる(STAGE 2〜: 分裂型と機雷が混入)
+  const spinnerP = Math.min(0.12 + (stage-1)*0.04, 0.26);
+  const aimerP   = Math.min(0.24 + (stage-1)*0.03, 0.34);
+  const splitP   = stage>=2 ? 0.10 : 0;
+  const mineP    = stage>=2 ? 0.10 : 0;
+  const r = Math.random();
+  let kind='drift', acc=0;
+  if(r<(acc+=spinnerP)) kind='spinner';
+  else if(r<(acc+=aimerP)) kind='aimer';
+  else if(r<(acc+=splitP)) kind='split';
+  else if(r<(acc+=mineP)) kind='mine';
+  // 出現方向: STAGE 2から左右、STAGE 3から真下が解禁
+  const sideP   = stage>=2 ? Math.min(0.22 + (stage-2)*0.04, 0.34) : 0;
+  const bottomP = stage>=3 ? Math.min(0.12 + (stage-3)*0.04, 0.20) : 0;
+  let edge='top';
+  const roll=Math.random();
+  if(roll < bottomP) edge='bottom';
+  else if(roll < bottomP+sideP) edge = Math.random()<0.5 ? 'left' : 'right';
+  if(kind==='split'||kind==='mine') edge='top'; // 特殊敵は上からのみ
+
+  const e = {
+    hp: 3 + (stage-1)*2,
+    r: 14, t: rnd(0,TAU), fireT: rnd(0.5,1.8),
+    kind, vy:0, vx:0, baseX:0, baseY:0, dead:false, stage, edge
+  };
+  if(edge==='top'){
+    e.x=rnd(40,W-40); e.y=-rnd(30,90);
+    e.vy = rnd(30,50) + hard*26;
+  }else if(edge==='bottom'){
+    e.x=rnd(40,W-40); e.y=H+rnd(30,90);
+    e.vy = -(rnd(36,56) + hard*30); // 下からせり上がる
+  }else{
+    e.baseY = rnd(H*0.12, H*0.5);
+    e.y = e.baseY;
+    if(edge==='left'){ e.x=-rnd(30,70); e.vx = rnd(60,90)+hard*30; }
+    else{ e.x=W+rnd(30,70); e.vx = -(rnd(60,90)+hard*30); }
+  }
+  if(kind==='spinner'){ e.hp += 2+stage; e.r=17; }
+  if(kind==='split'){ e.hp += 1+stage; e.r=18; }
+  if(kind==='mine'){ e.hp=2; e.r=10; e.fuse=4.5; e.fireT=1e9; e.vy=rnd(16,26); }
+  e.maxHp=e.hp;
+  e.baseX=e.x;
+  enemies.push(e);
+  markers.push({x:e.x, y:e.baseY, edge, life:0.55, max:0.55}); // 出現予告(四辺対応)
+}
+
+function enemyFire(e){
+  const stage = (e.stage||1);
+  const hard = Math.min(0.45 + (stage-1)*0.22, 1.4);
+  const sp = 95 + hard*95;
+  if(e.kind==='drift'){
+    // 中弾の3-way → 後半は5-wayファン
+    const fan = hard>0.8 ? 2 : 1;
+    for(let i=-fan;i<=fan;i++){
+      const a = Math.PI/2 + i*0.32;
+      eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,r:4.5,grazed:false});
+    }
+  }else if(e.kind==='aimer'){
+    const a = Math.atan2(player.y-e.y, player.x-e.x);
+    const n = 2 + (hard>0.7?1:0);
+    for(let i=0;i<n;i++){
+      eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*(sp+40+i*55),vy:Math.sin(a)*(sp+40+i*55),r:4,grazed:false,kind:'aim'});
+    }
+    if(hard>0.89){ // STAGE 3〜: 高速の針弾を一刺し追加
+      eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*(sp+180),vy:Math.sin(a)*(sp+180),r:3,grazed:false,kind:'needle'});
+    }
+  }else if(e.kind==='spinner'){
+
+    // スピナー: 一定速で回転する規則格子のリング
+    const k = 8 + Math.floor(hard*5);
+    e.spin = (e.spin||0) + 0.35;
+    const off = e.spin;
+    for(let i=0;i<k;i++){
+      const a = off + i/k*TAU;
+      eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.8,vy:Math.sin(a)*sp*0.8,r:3.2,grazed:false,kind:'sq'});
+    }
+    if(hard>0.6){ // STAGE 2〜: ゆっくり迫る大弾(左右交互の規則的なズレ)
+      e.orbSide = (e.orbSide||1) * -1;
+      const a = Math.atan2(player.y-e.y, player.x-e.x) + e.orbSide*0.18;
+      eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.45,vy:Math.sin(a)*sp*0.45,r:10,grazed:false});
+    }
+  }else if(e.kind==='split'){
+    // X字: 対角4方向の中弾
+    for(let j=0;j<4;j++){
+      const a=Math.PI/4 + j*Math.PI/2;
+      eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.7,vy:Math.sin(a)*sp*0.7,r:4.5,grazed:false});
+    }
+  }else if(e.kind==='splitkid'){
+    // 分裂仔: 単発の狙撃
+    const a=Math.atan2(player.y-e.y,player.x-e.x);
+    eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*(sp+60),vy:Math.sin(a)*(sp+60),r:4,grazed:false,kind:'aim'});
+  }
+}
+
+// ---- ボス弾幕パターンライブラリ ----
+// lv = ボス番号(0始まり)。周回するほど密度・速度が上がる
+const P = {
+  ring(e,sp,lv){ // 回転リング
+    const k=14+Math.min(lv,4)*2, off=e.t*0.7;
+    for(let i=0;i<k;i++){
+      const a=off+i/k*TAU;
+      eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.75,vy:Math.sin(a)*sp*0.75,r:4.5,grazed:false});
+    }
+    e.fireT=Math.max(0.9-lv*0.06,0.55);
+  },
+  fan(e,sp,lv){ // 自機狙い5-way
+    const a0=Math.atan2(player.y-e.y,player.x-e.x);
+    const n=2+Math.min(lv,2);
+    for(let i=-n;i<=n;i++){
+      const a=a0+i*0.18;
+      eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*(sp+60),vy:Math.sin(a)*(sp+60),r:4,grazed:false,kind:'aim'});
+    }
+    e.fireT=0.7;
+  },
+  spiral2(e,sp,lv){ // 二重スパイラル
+    e.spin=(e.spin||0)+0.42;
+    for(const off of [0,Math.PI]){
+      const a=e.spin+off;
+      eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.65,vy:Math.sin(a)*sp*0.65,r:3,grazed:false});
+    }
+    e.fireT=Math.max(0.085-lv*0.004,0.06);
+  },
+  wall(e,sp,lv){ // 弾のカーテン: 隙間がサインカーブで左右に揺れる(軌道を読んで潜る)
+    const cols=13+Math.min(lv,4)*2;
+    const gap=Math.floor((0.5+0.4*Math.sin(e.t*0.9))*(cols-4))+2;
+    for(let i=0;i<cols;i++){
+      if(Math.abs(i-gap)<=1) continue; // 隙間
+      const x=(i+0.5)/cols*W;
+      eBullets.push({x,y:e.y-10,vx:0,vy:sp*0.8,r:4.5,grazed:false});
+    }
+    e.fireT=Math.max(1.5-lv*0.08,1.0);
+  },
+  burst3(e,sp,lv){ // 自機狙い3連の針弾バースト(速度差で縦に伸びる)
+    const a=Math.atan2(player.y-e.y,player.x-e.x);
+    for(let i=0;i<3;i++){
+      const v=sp+70+i*70;
+      eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,r:3,grazed:false,kind:'needle'});
+    }
+    e.fireT=Math.max(0.5-lv*0.03,0.32);
+  },
+  cross(e,sp,lv){ // 4本腕の回転スポーク
+    e.spin=(e.spin||0)+0.16+lv*0.012;
+    for(let j=0;j<4;j++){
+      const a=e.spin+j*Math.PI/2;
+      eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.7,vy:Math.sin(a)*sp*0.7,r:3.2,grazed:false,kind:'sq'});
+    }
+    e.fireT=0.08;
+  },
+  flower(e,sp,lv){ // 花弁状リング: 一定角ずつ回転しながら二層に開く
+    const k=12+Math.min(lv,4)*2;
+    e.spin=(e.spin||0)+0.45;
+    const off=e.spin;
+    for(let i=0;i<k;i++){
+      const a=off+i/k*TAU;
+      if(i%2===0){
+        eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.95,vy:Math.sin(a)*sp*0.95,r:3,grazed:false});
+      }else{
+        eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.42,vy:Math.sin(a)*sp*0.42,r:9,grazed:false});
+      }
+    }
+    e.fireT=Math.max(1.0-lv*0.05,0.7);
+  },
+  rain(e,sp,lv){ // スイープシャワー: 噴射方向が左右へ規則的に往復
+    const a0=Math.PI/2 + Math.sin(e.t*2.6)*0.85;
+    const n=2+Math.min(lv,3);
+    for(let i=0;i<n;i++){
+      const a=a0+(i-(n-1)/2)*0.12;
+      eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.8,vy:Math.sin(a)*sp*0.8,r:3,grazed:false});
+    }
+    e.fireT=0.16;
+  },
+  spiral4(e,sp,lv){ // 四重スパイラル(最高密度のグレイズ場)
+    e.spin=(e.spin||0)+0.33;
+    for(let j=0;j<4;j++){
+      const a=e.spin+j*TAU/4;
+      eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.6,vy:Math.sin(a)*sp*0.6,r:3,grazed:false});
+    }
+    e.fireT=Math.max(0.13-lv*0.005,0.09);
+  }
+};
+P.laserAim = function(e,sp,lv){
+  // 照準レーザー: 自機の現在地へ予告線 → 0.8秒後に発射(動けば躱せる)
+  SFX.laserWarn();
+  const a=Math.atan2(player.y-e.y, player.x-e.x);
+  fireLaser(e.x,e.y,a,12);
+  if(lv>=3){ fireLaser(e.x,e.y,a+0.35,10); fireLaser(e.x,e.y,a-0.35,10); }
+  e.fireT=2.6;
+};
+P.laserFan = function(e,sp,lv){
+  // 扇レーザー: 下方へ等間隔のn本(規則的な角度、隙間を読んで立つ)
+  SFX.laserWarn();
+  const n=3+(lv>=3?2:0);
+  for(let i=0;i<n;i++){
+    const a=Math.PI/2 + (i-(n-1)/2)*0.42;
+    fireLaser(e.x,e.y,a,11);
+  }
+  e.fireT=3.0;
+};
+// ===== ボス固有パターン: 形=弾幕 =====
+// --- BOSS I: 鷲 ---
+P.wingBeat = function(e,sp,lv){ // 羽ばたき: 左右対称の翼弧が波のように振られる
+  e.wb=(e.wb||0)+0.5;
+  const sweep=Math.sin(e.wb)*0.55;
+  const fz=Math.min(Math.round(5*(e.dz||1)),8); // 怒りで羽根が増える
+  for(const sd of [-1,1]){
+    for(let i=0;i<fz;i++){
+      const a=Math.PI/2 + sd*(0.22+i*0.15) + sweep*sd;
+      const v=sp*(0.68+i*0.07); // 速度勾配 → 羽根の連なり
+      eBullets.push({x:e.x+sd*e.r*0.6,y:e.y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,r:3,grazed:false});
+    }
+  }
+  e.fireT=0.22;
+};
+P.featherV = function(e,sp,lv){ // 風切のV編隊: 渡り鳥の隊列が自機へ滑空
+  const a0=Math.atan2(player.y-e.y,player.x-e.x);
+  const ca=Math.cos(a0), sa=Math.sin(a0);
+  for(let i=0;i<=3;i++){
+    for(const sd of (i===0?[0]:[-1,1])){
+      const back=i*16, lat=sd*i*11;
+      eBullets.push({
+        x:e.x - ca*back - sa*lat,
+        y:e.y - sa*back + ca*lat,
+        vx:ca*(sp+70), vy:sa*(sp+70), r:3.5, grazed:false, kind:i===0?'aim':undefined
+      });
+    }
+  }
+  e.fireT=1.1;
+};
+P.talons = function(e,sp,lv){ // 爪撃: 両翼端からの2条が自機の位置で交差する
+  for(const sd of [-1,1]){
+    const ox=sd*e.r*1.2;
+    const a=Math.atan2(player.y-e.y, player.x-(e.x+ox));
+    eBullets.push({x:e.x+ox,y:e.y,vx:Math.cos(a)*(sp+55),vy:Math.sin(a)*(sp+55),r:3,grazed:false,kind:'needle'});
+  }
+  e.fireT=0.18;
+};
+// --- BOSS II: 人型 ---
+P.twinSpiral = function(e,sp,lv){ // 双掌の鏡映スパイラル: 干渉してレース模様を編む
+  e.spin=(e.spin||0)+0.34;
+  for(const sd of [-1,1]){
+    const ox=sd*e.r*0.95, oy=e.r*0.12;
+    const a=sd*e.spin;
+    for(const off of [0,Math.PI]){
+      eBullets.push({x:e.x+ox,y:e.y+oy,vx:Math.cos(a+off)*sp*0.6,vy:Math.sin(a+off)*sp*0.6,r:3,grazed:false});
+    }
+  }
+  e.fireT=0.07;
+};
+P.palmPulse = function(e,sp,lv){ // 掌打の波紋: 左右の掌から交互に二重リング(干渉縞)
+  e.pp=-(e.pp||1);
+  const ox=e.pp*e.r*0.95, oy=e.r*0.12;
+  const k=Math.round(16*(e.dz||1));
+  for(let i=0;i<k;i++){
+    const a=i/k*TAU + (e.pp>0?0:Math.PI/k); // 半位相ずらし → 網目が編まれる
+    eBullets.push({x:e.x+ox,y:e.y+oy,vx:Math.cos(a)*sp*0.52,vy:Math.sin(a)*sp*0.52,r:4.5,grazed:false});
+    eBullets.push({x:e.x+ox,y:e.y+oy,vx:Math.cos(a)*sp*0.74,vy:Math.sin(a)*sp*0.74,r:3,grazed:false});
+  }
+  e.fireT=1.0;
+};
+P.palmLasers = function(e,sp,lv){ // 双掌レーザー: 両掌から自機の一点で交差する
+  SFX.laserWarn();
+  for(const sd of [-1,1]){
+    const ox=sd*e.r*0.95, oy=e.r*0.12;
+    const a=Math.atan2(player.y-(e.y+oy), player.x-(e.x+ox));
+    fireLaser(e.x+ox, e.y+oy, a, 10);
+  }
+  e.fireT=2.6;
+};
+// --- BOSS III: 鬼 ---
+P.clubSweep = function(e,sp,lv){ // 金棒の薙ぎ: 速度勾配の弾列が1本の棒となって振り抜く
+  e.club=(e.club||0)+0.15;
+  const a=Math.PI/2 + Math.sin(e.club)*1.05;
+  const seg=7+((e.rage||0)>0.6?2:0); // 怒りで棒が伸びる
+  for(let i=0;i<seg;i++){
+    const v=sp*(0.45+i*0.13); // 同角度・速度勾配 → 伸びる棒
+    eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,r:i===seg-1?6:3.5,grazed:false,kind:i%2?'sq':undefined});
+  }
+  e.fireT=0.09;
+};
+P.oniStomp = function(e,sp,lv){ // 地団駄: 三重の波紋リングが半位相ずれで重なる曼荼羅
+  e.st2=(e.st2||0)+0.5;
+  const k=Math.round(18*(e.dz||1));
+  let layer=0;
+  const vms=(e.rage||0)>0.6 ? [0.5,0.68,0.88,1.05] : [0.5,0.68,0.88]; // 終盤は四重輪
+  for(const vm of vms){
+    layer++;
+    for(let i=0;i<k;i++){
+      const a=e.st2+i/k*TAU+(layer===2?Math.PI/k:0);
+      eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*vm,vy:Math.sin(a)*sp*vm,r:vm<0.6?4.5:3,grazed:false});
+    }
+  }
+  e.fireT=2.2;
+};
+// --- BOSS IV: 悪魔 ---
+P.pentagram = function(e,sp,lv){ // 五芒星: 星の辺上に配した弾が形を保ったまま拡大する魔法陣
+  e.pent=(e.pent||0)+0.35;
+  const R=26;
+  // 怒り70%超で逆位相の二重星(十芒の魔法陣)に
+  const stars=(e.rage||0)>0.7 ? [0, TAU/10] : [0];
+  for(const so of stars){
+    const pts=[];
+    for(let i=0;i<5;i++){const a=e.pent+so+i/5*TAU-Math.PI/2;pts.push([Math.cos(a),Math.sin(a)]);}
+    const order=[0,2,4,1,3,0]; // 五芒星の一筆書き
+    for(let seg=0;seg<5;seg++){
+      const p1=pts[order[seg]], p2=pts[order[seg+1]];
+      for(let j=0;j<5;j++){
+        const f=j/4;
+        const px=p1[0]+(p2[0]-p1[0])*f, py=p1[1]+(p2[1]-p1[1])*f;
+        eBullets.push({
+          x:e.x+px*R, y:e.y+py*R,
+          vx:px*sp*0.55, vy:py*sp*0.55, // 位置∝速度 → 相似拡大
+          r:3, grazed:false
+        });
+      }
+    }
+  }
+  e.fireT=1.6;
+};
+P.batWave = function(e,sp,lv){ // 蝙蝠の群れ: 翼下から小さな編隊が波状に押し寄せる
+  e.bw=(e.bw||0)+1;
+  const a0=Math.PI/2 + Math.sin(e.bw*0.7)*0.5;
+  const bn=3+((e.rage||0)>0.5?1:0);
+  for(const sd of [-1,1]){
+    for(let i=0;i<bn;i++){
+      const a=a0+sd*(0.12+i*0.06);
+      eBullets.push({x:e.x+sd*e.r*(0.4+i*0.35),y:e.y,vx:Math.cos(a)*sp*0.85,vy:Math.sin(a)*sp*0.85,r:3,grazed:false,kind:'sq'});
+    }
+  }
+  e.fireT=0.2;
+};
+P.crossLasers = function(e,sp,lv){
+  // 悪魔の所業: 局面を巡回する3つの意地悪なレーザー攻撃
+  SFX.laserWarn();
+  e.lz=(e.lz||0); e.lz=(e.lz+1)%3;
+  if(e.lz===0){
+    // ① 自機を追尾する処刑レーザー2条が、逃げた先で挟み込む
+    //    予告中ずっと自機を追い続け、照射直前にロック → 横に動いても先回りされる
+    const a=Math.atan2(player.y-e.y, player.x-e.x);
+    fireLaser(e.x, e.y, a-0.16, 11, {warn:1.0, fire:0.4, follow:0.85});
+    fireLaser(e.x, e.y, a+0.16, 11, {warn:1.0, fire:0.4, follow:0.85});
+  }else if(e.lz===1){
+    // ② 回転する死の鎌: 画面を薙ぎ払う2条。安置が刻一刻と動くので走らされる
+    const base=Math.atan2(player.y-e.y, player.x-e.x);
+    const dir = player.x<W/2 ? 1 : -1; // 自機のいる側へ振ってくる
+    fireLaser(e.x, e.y, base-dir*0.7, 13, {warn:0.9, fire:0.7, sweep:dir*1.1});
+    fireLaser(e.x, e.y, base-dir*0.7+Math.PI, 13, {warn:0.9, fire:0.7, sweep:dir*1.1});
+  }else{
+    // ③ 五芒星の檻: 5条が星形に放たれ、わずかな隙間にしか立てない
+    const off=rnd(0,TAU);
+    for(let i=0;i<5;i++){
+      fireLaser(e.x, e.y, off + i*TAU/5, 10, {warn:1.1, fire:0.45});
+    }
+    // 檻の中に通常弾を撒いて足場を削る(いやらしさの上乗せ)
+    for(let i=0;i<6;i++){
+      const a=off+0.3+i/6*TAU;
+      eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.4,vy:Math.sin(a)*sp*0.4,r:3,grazed:false});
+    }
+  }
+  e.fireT=3.2;
+};
+// --- BOSS V: 龍 ---
+P.serpentWave = function(e,sp,lv){ // 蛇行波: サイン波形を保ったまま降りてくる弾の帯
+  e.sw2=(e.sw2||0)+0.9;
+  const cols=Math.min(Math.round(16*(e.dz||1)),24);
+  for(let i=0;i<cols;i++){
+    const x=(i+0.5)/cols*W;
+    const yo=Math.sin(i*0.55+e.sw2)*42;
+    eBullets.push({x,y:e.y-30+yo,vx:0,vy:sp*0.62,r:3.5,grazed:false});
+  }
+  e.fireT=1.15;
+};
+P.pearls = function(e,sp,lv){ // 龍珠: ゆっくり開く大珠の輪と、間を縫う小弾の渦の二重奏
+  e.pl=(e.pl||0)+0.4;
+  const k=Math.round(8*(e.dz||1));
+  for(let i=0;i<k;i++){
+    const a=e.pl+i/k*TAU;
+    eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.4,vy:Math.sin(a)*sp*0.4,r:9,grazed:false});
+    eBullets.push({x:e.x,y:e.y,vx:Math.cos(a+Math.PI/k)*sp*0.85,vy:Math.sin(a+Math.PI/k)*sp*0.85,r:3,grazed:false});
+  }
+  e.fireT=1.3;
+};
+P.dragonBreath = function(e,sp,lv){ // ブレス: 頭の向きから薙ぎ払う火炎の帯
+  const dir=Math.cos(e.t*0.5)>=0?1:-1;
+  const hx=e.x+dir*e.r*0.7, hy=e.y+Math.sin(e.t*2.0*(e.purged?1.6:1))*e.r*0.3;
+  e.br=(e.br||0)+0.32;
+  const a=Math.PI/2 + dir*0.3 + Math.sin(e.br)*0.55;
+  const bvms=(e.rage||0)>0.5 ? [0.8,1.0,1.2,1.4] : [0.8,1.0,1.2];
+  for(const vm of bvms){ // 速度差で帯に厚みが出る
+    eBullets.push({x:hx,y:hy,vx:Math.cos(a)*sp*0.7*vm,vy:Math.sin(a)*sp*0.7*vm,r:3,grazed:false});
+  }
+  e.fireT=0.07;
+};
+P.heavenPillars = function(e,sp,lv){ // 天柱: 等間隔の垂直レーザー。交互に半ピッチずれる
+  SFX.laserWarn();
+  e.hp2=(e.hp2||0)+1;
+  const n=4+((e.rage||0)>0.6?1:0); // 怒りで柱が増える
+  const shift=(e.hp2%2)*(W/n)*0.5;
+  for(let i=0;i<n;i++){
+    const x=(W*(i+0.5)/n + shift) % W;
+    fireLaser(x, -10, Math.PI/2, 11);
+  }
+  e.fireT=3.2;
+};
+
+// ボスごとのパターンセット(STAGE 2以降にレーザー登場)
+const BOSS_SETS=[
+  [P.wingBeat,    P.featherV,    P.talons],                                  // I:   鷲 — 翼と編隊と爪
+  [P.twinSpiral,  P.palmLasers,  P.palmPulse,    P.burst3],                  // II:  人型 — 双掌の武術
+  [P.clubSweep,   P.flower,      P.laserFan,     P.oniStomp],                // III: 鬼 — 金棒と曼荼羅
+  [P.pentagram,   P.batWave,     P.crossLasers,  P.spiral4],                 // IV:  悪魔 — 魔法陣と群れ
+  [P.serpentWave, P.pearls,      P.dragonBreath, P.heavenPillars, P.ring]    // V:   龍 — 波と珠と天柱
+];
+
+function bossFire(e){
+  const lv = (e.stage||1)-1; // 0〜4
+  // 怒り(rage): 残ゲージが減るほど 0→1 で上昇し、弾速・連射・密度に乗る
+  const rem = Math.ceil(e.hp/(e.perBar||e.maxHp));
+  e.rage = (e.bossBars>1) ? (e.bossBars-rem)/(e.bossBars-1) : 0;
+  e.dz = 1 + e.rage*0.6; // 密度係数(パターン側が参照)
+  const sp = (110 + Math.min(0.5+lv*0.2, 1.4)*70) * (1 + e.rage*0.22);
+  // 各ボスは自分の形に特化した固有セットを使う
+  const set = BOSS_SETS[Math.min(lv, BOSS_SETS.length-1)];
+  const phase = Math.floor(e.t/6)%set.length; // 6秒ごとにパターン切替
+  if(phase!==e.lastPhase){
+    e.lastPhase=phase;
+    e.fireT=1.2; // パターン転換の小休止(立て直しのチャンス)
+    return;
+  }
+  set[phase](e, sp, lv);
+  e.fireT *= (1 - e.rage*0.25);  // ゲージが減るほど連射が加速
+  if(e.purged) e.fireT*=0.9;     // 変身ボーナスはrageと重なるため緩和
+}
+
+// 撃破エフェクト: 形に沿った破片の散り方
+function deathFx(e){
+  const c = STAGE_COLS[Math.min((e.stage||1)-1, STAGE_COLS.length-1)].st;
+  if(e.kind==='spinner'){
+    // 歯車: 歯が放射状に飛び散る
+    for(let i=0;i<12;i++){
+      const a=i/12*TAU, v=rnd(140,200);
+      particles.push({x:e.x,y:e.y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:rnd(.3,.5),max:.5,color:c});
+    }
+  }else if(e.kind==='drift'){
+    // シェブロン: 左右2つに折れて分かれる
+    for(const sd of [-1,1]) for(let i=0;i<7;i++){
+      particles.push({x:e.x+sd*4,y:e.y,vx:sd*rnd(60,160),vy:rnd(-40,120),life:rnd(.25,.5),max:.5,color:c});
+    }
+  }else if(e.kind==='split'||e.kind==='splitkid'){
+    // 菱形: 四片が対角に割れる
+    for(let j=0;j<4;j++){
+      const a=Math.PI/4+j*Math.PI/2;
+      for(let i=0;i<4;i++){
+        const v=rnd(100,190);
+        particles.push({x:e.x,y:e.y,vx:Math.cos(a)*v+rnd(-25,25),vy:Math.sin(a)*v+rnd(-25,25),life:rnd(.25,.45),max:.45,color:c});
+      }
+    }
+  }else if(e.kind==='aimer'){
+    // 矢じり: 狙っていた方向へ勢い余って砕け散る
+    const a=Math.atan2(player.y-e.y,player.x-e.x);
+    for(let i=0;i<12;i++){
+      const aa=a+rnd(-0.5,0.5), v=rnd(80,220);
+      particles.push({x:e.x,y:e.y,vx:Math.cos(aa)*v,vy:Math.sin(aa)*v,life:rnd(.25,.5),max:.5,color:c});
+    }
+  }else{
+    burst(e.x,e.y,c,16,190);
+  }
+}
+
+// レーザー: warn秒の予告線 → fire秒の本射出
+function fireLaser(x,y,angle,w,opt){
+  opt=opt||{};
+  lasers.push({
+    x,y,a:angle,w:w||11,
+    warn:(opt.warn!==undefined?opt.warn:0.8),
+    fire:(opt.fire!==undefined?opt.fire:0.45),
+    sweep:opt.sweep||0,        // 照射中に回転する角速度(rad/s)
+    follow:opt.follow||0,      // >0なら予告中に自機を追尾(0〜1の追従率)
+    t:0,grazed:false,zapped:false
+  });
+}
+
+function doGraze(px,py){
+  S.grazeCount++;
+  S.grazeFlash=0.22;
+  SFX.graze();
+  S.gauge = clamp(S.gauge + 0.09, 0, 1);
+  if(S.gauge>=1){
+    S.gauge=0;
+    S.mult = Math.min(S.mult+0.5, 8);
+    S.maxMult=Math.max(S.maxMult,S.mult);
+    SFX.multUp();
+    popup(player.x, player.y-44, '×'+S.mult.toFixed(1), GOLD);
+    burst(player.x,player.y,GOLD,10,120);
+  }
+  S.score += Math.round(10*S.mult);
+  particles.push({x:px,y:py,vx:rnd(-30,30),vy:rnd(-30,30),life:.3,max:.3,color:CYAN});
+}
+
+function mineExplode(e){
+  for(let i=0;i<8;i++){
+    const a=i/8*TAU; // 上下左右斜めに揃った規則的な8方向
+    eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*150,vy:Math.sin(a)*150,r:4.5,grazed:false});
+  }
+  burst(e.x,e.y,MAGENTA,16,190);
+  S.shake=Math.max(S.shake,5);
+  SFX.boom();
+}
+
+function bossDown(e){
+  SFX.boss();
+  S.bossActive=false; S.calmT=3; S.shake=12;
+  const gain=Math.round(2000*S.mult);
+  S.score+=gain;
+  popup(e.x,e.y,'+'+gain+' BOSS',GOLD);
+  if(S.bombs<3){
+    S.bombs++;
+    popup(e.x,e.y+24,'BREAK +1',CYAN);
+  }
+  burst(e.x,e.y,MAGENTA,40,320);
+  burst(e.x,e.y,GOLD,24,220);
+  eBullets.length=0; lasers.length=0; // 撃破で全弾・レーザー消去
+  items.push({x:e.x,y:e.y,vy:55,t:0}); // 確定ドロップ
+  // ステージ進行
+  S.stage++;
+  S.stageWave=0;
+  if(S.stage>STAGE_DEF.length){
+    S.cleared=true; // 全5ステージ制覇 → 静寂の後にクリア画面
+    S.calmT=2.5;
+  }else{
+    popup(W/2, H*0.35, 'STAGE '+S.stage, CYAN);
+  }
+}
+
+// ---------- fx ----------
+function burst(x,y,color,n=14,pow=160){
+  for(let i=0;i<n;i++){
+    const a=rnd(0,TAU), v=rnd(pow*0.3,pow);
+    particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:rnd(.25,.6),max:.6,color});
+  }
+}
+function popup(x,y,text,color){
+  popups.push({x,y,text,color,life:.8});
+}
+
+// 発光ノード: 関節や先端に置く小さな光点(グラフィックの締め)
+function glowDot(x,y,r,c,a){
+  ctx.save();
+  ctx.globalAlpha=a;
+  ctx.fillStyle=c;
+  ctx.shadowColor=c;ctx.shadowBlur=10;
+  ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fill();
+  ctx.restore();
+}
+
+// ---------- update ----------
+function update(dt){
+  S.t+=dt; S.waveT-=dt;
+  if(S.shake>0)S.shake=Math.max(0,S.shake-dt*30);
+  if(S.inv>0)S.inv-=dt;
+  if(S.grazeFlash>0)S.grazeFlash-=dt;
+
+  if(S.calmT>0){
+    S.calmT-=dt; // ボス撃破後の静寂
+    if(S.calmT<=0 && S.cleared){ gameClear(); return; }
+  }else if(S.bossActive){
+    if(S.bossWarnT>0){
+      S.bossWarnT-=dt; // WARNING表示中は無音の溜め
+      if(S.bossWarnT<=0) spawnBossNow();
+    }
+  }else{
+    if(S.waveRestT>0){
+      // ウェーブクリア後のひと息
+      S.waveRestT-=dt;
+      if(S.waveRestT<=0){ spawnWave(); S.waveT=30; }
+    }else if(S.spawnQueue>0){
+      // クリア駆動: 今の集団をほぼ掃討したら次の集団が登場
+      S.squadTimeout-=dt;
+      if(enemies.length<=1 || S.squadTimeout<=0){
+        S.squadBeat-=dt; // 掃討後のひと呼吸
+        if(S.squadBeat<=0){
+          const stage = S.stage;
+          // 後の集団ほど大きい: 集団番号+ステージで成長
+          let g = Math.min(S.spawnQueue, 1 + S.squadNum + stage, 6);
+          if(S.spawnQueue-g<=2) g=S.spawnQueue; // 端数は吸収して締めの大集団に
+          for(let i=0;i<g;i++) spawnEnemy();
+          S.spawnQueue-=g;
+          S.squadNum++;
+          S.squadBeat = 0.7;
+          S.squadTimeout = 9; // こう着防止: 9秒粘られたら次を投入
+        }
+      }else{
+        S.squadBeat = 0.7;
+      }
+    }else if(enemies.some(en=>en.kind==='midboss')){
+      // 中ボス戦中は増援を止める(関門に集中)
+    }else if(enemies.length===0){
+      // 全滅クリア: 解放の間を置いてから次へ
+      if(S.stageWave===0){ spawnWave(); S.waveT=30; } // ゲーム/ステージの開幕は即開始
+      else{
+        S.waveRestT=1.6;
+        popup(player.x, player.y-70, 'CLEAR', CYAN);
+      }
+    }else if(S.waveT<=0){
+      spawnWave(); S.waveT = 30; // 粘られたら容赦なく次が重なる
+    }
+  }
+
+  // デモモード: 自動操縦
+  if(S.demo){
+    let rx=0,ry=0;
+    for(const b of eBullets){
+      const dx=player.x-b.x, dy=player.y-b.y, d2=dx*dx+dy*dy;
+      // 現在位置の反発
+      if(d2<120*120){
+        const d=Math.sqrt(d2)||1;
+        const w=(120-d)/120;
+        rx+=dx/d*w; ry+=dy/d*w;
+      }
+      // 予測回避: 0.25秒後に自機へ近づく弾は強めに避ける
+      const fx=b.x+b.vx*0.25, fy=b.y+b.vy*0.25;
+      const fdx=player.x-fx, fdy=player.y-fy, fd2=fdx*fdx+fdy*fdy;
+      if(fd2<70*70 && fd2<d2){
+        const fd=Math.sqrt(fd2)||1;
+        const w=(70-fd)/70*1.4;
+        rx+=fdx/fd*w; ry+=fdy/fd*w;
+      }
+    }
+    // レーザーの予告線・ビームから垂直方向へ退避
+    for(const L of lasers){
+      const ldx=player.x-L.x, ldy=player.y-L.y;
+      const proj=ldx*Math.cos(L.a)+ldy*Math.sin(L.a);
+      if(proj>-40){
+        const pd=-Math.sin(L.a)*ldx+Math.cos(L.a)*ldy;
+        if(Math.abs(pd)<130){
+          const push=(130-Math.abs(pd))/130*1.7;
+          const sgn=Math.sign(pd||1);
+          rx+=-Math.sin(L.a)*sgn*push;
+          ry+= Math.cos(L.a)*sgn*push;
+        }
+      }
+    }
+    let hx, hy;
+    if(S.dev){
+      // DEV: 最寄りの敵の真下に回り込んで上方向ショットを当てる
+      let tgt=null, td=Infinity;
+      for(const en of enemies){
+        if(en.y<0 || en.y>player.y-30) continue; // 自機より上にいる敵を狙う
+        const dx=en.x-player.x, dy=en.y-player.y, d=dx*dx+dy*dy;
+        if(d<td){ td=d; tgt=en; }
+      }
+      if(tgt){
+        hx = tgt.x;                               // 横位置を敵に合わせる(照準)
+        hy = Math.max(tgt.y+150, H*0.5);          // 適度な距離を保って下から撃つ
+      }else{
+        hx = W/2 + Math.sin(S.t*0.5)*W*0.25;
+        hy = H*0.7;
+      }
+    }else{
+      hx=W/2+Math.sin(S.t*0.6)*W*0.28;
+      hy=H*0.72+Math.sin(S.t*0.9)*40;
+    }
+    setTarget(
+      player.x + rx*125 + (hx-player.x)*(S.dev?0.16:0.10),
+      player.y + ry*125 + (hy-player.y)*0.08
+    );
+    if(S.dev){
+      // 危険時のみBREAK: 至近弾が一定数あり、かつクールダウン明けのとき
+      player.devBomb = (player.devBomb||0) - dt;
+      let near=0;
+      for(const b of eBullets){
+        const dx=b.x-player.x, dy=b.y-player.y;
+        if(dx*dx+dy*dy < 70*70) near++;
+      }
+      if(near>=7 && player.devBomb<=0){
+        doBurst();
+        player.devBomb = 12; // 最低12秒は再使用しない(最後の手段)
+      }
+    }else if(eBullets.length>40 && S.bombs>0 && Math.random()<0.01){
+      doBurst();
+    }
+  }
+
+  // player smooth follow
+  const lerp = 1-Math.pow(0.0008, dt);
+  player.x += (player.tx-player.x)*lerp;
+  player.y += (player.ty-player.y)*lerp;
+  player.trail.unshift({x:player.x,y:player.y});
+  if(player.trail.length>12)player.trail.pop();
+
+  // auto fire
+  player.fireT-=dt;
+  const rate = S.mult>=4 ? 0.085 : 0.11; // 本編と同一のレート
+  if(player.fireT<=0){
+    player.fireT=rate;
+    SFX.shot();
+    const spread = S.mult>=6 ? 2 : S.mult>=2.5 ? 1 : 0;
+    for(let i=-spread;i<=spread;i++){
+      bullets.push({x:player.x+i*7,y:player.y-10,vx:i*36,vy:-620,r:3});
+    }
+    // ホーミングミサイル: 1発おきに左右から発射
+    if(S.homingT>0){
+      player.homingTick=!player.homingTick;
+      if(player.homingTick){
+        for(const s of [-1,1]){
+          bullets.push({x:player.x+s*13,y:player.y+4,vx:s*260,vy:-300,r:3.5,homing:true});
+        }
+      }
+    }
+  }
+  if(S.homingT>0)S.homingT-=dt;
+
+  // player bullets (追尾弾は最寄りの敵へ旋回)
+  for(const b of bullets){
+    if(b.homing){
+      let best=null,bd=Infinity;
+      for(const e of enemies){
+        const dx=e.x-b.x,dy=e.y-b.y,d=dx*dx+dy*dy;
+        if(d<bd){bd=d;best=e;}
+      }
+      if(best){
+        const cur=Math.atan2(b.vy,b.vx);
+        const tgt=Math.atan2(best.y-b.y,best.x-b.x);
+        let da=tgt-cur;
+        while(da>Math.PI)da-=TAU; while(da<-Math.PI)da+=TAU;
+        const na=cur+clamp(da,-7*dt,7*dt);
+        b.vx=Math.cos(na)*480; b.vy=Math.sin(na)*480;
+      }
+      // 軌跡
+      particles.push({x:b.x,y:b.y,vx:0,vy:0,life:.14,max:.14,color:GOLD});
+    }
+    b.x+=b.vx*dt;b.y+=b.vy*dt;
+  }
+  bullets=bullets.filter(b=>b.y>-20&&b.y<H+20&&b.x>-20&&b.x<W+20);
+
+  // items: 落下と取得
+  for(const it of items){
+    it.t+=dt;
+    it.y+=it.vy*dt;
+    it.x+=Math.sin(it.t*2.4)*22*dt;
+    const dx=it.x-player.x,dy=it.y-player.y;
+    if(dx*dx+dy*dy < 24*24){
+      it.dead=true;
+      S.homingT=Math.min(S.homingT+8,16);
+      SFX.item();
+      popup(player.x,player.y-40,'HOMING +8s',GOLD);
+      burst(player.x,player.y,GOLD,12,140);
+    }
+    if(it.y>H+20)it.dead=true;
+  }
+  items=items.filter(i=>!i.dead);
+
+  // stars
+  for(const s of stars){s.y+=s.v*dt; if(s.y>H){s.y=-4;s.x=rnd(0,W);}}
+
+  // enemies
+  for(const e of enemies){
+    e.t+=dt; e.fireT-=dt;
+    if(e.hitT>0)e.hitT-=dt;
+    // 機雷: 信管カウントダウン(画面内のみ)+接近起爆
+    if(e.kind==='mine' && e.y>10){
+      e.fuse-=dt;
+      const mdx=e.x-player.x, mdy=e.y-player.y;
+      if(e.fuse<=0 || mdx*mdx+mdy*mdy<80*80){
+        e.dead=true; mineExplode(e); continue;
+      }
+    }
+    // 損傷した敵は火花を散らす
+    if(e.maxHp && e.hp/e.maxHp<=0.4 && Math.random()<dt*5){
+      particles.push({x:e.x+rnd(-e.r,e.r),y:e.y+rnd(-e.r,e.r),vx:rnd(-20,20),vy:rnd(-30,10),life:.3,max:.3,color:MAGENTA});
+    }
+    if(e.kind==='midboss'){
+      // 左右に滑空しながら画面上部に居座る
+      e.y += (H*0.2 - e.y)*Math.min(dt*1.5,1);
+      e.x = W/2 + Math.sin(e.t*0.7)*(W*0.3);
+      e.spin += dt*1.2;
+      e.modeT -= dt;
+      if(e.modeT<=0){ e.mode=(e.mode+1)%3; e.modeT=4.5; } // 3つの攻撃を巡回
+      if(e.fireT<=0 && e.y>0){
+        midBossFire(e);
+      }
+      // 自機弾の被弾
+      for(const b of bullets){
+        if(b.dead)continue;
+        const dx=e.x-b.x,dy=e.y-b.y;
+        if(dx*dx+dy*dy<(e.r+b.r)*(e.r+b.r)){
+          b.dead=true; e.hp--; e.hitT=0.07;
+          particles.push({x:b.x,y:b.y,vx:rnd(-40,40),vy:rnd(-80,-20),life:.2,max:.2,color:PAPER});
+          if(e.hp<=0){
+            e.dead=true;
+            const gain=Math.round(800*S.mult);
+            S.score+=gain;
+            popup(e.x,e.y,'+'+gain,GOLD);
+            burst(e.x,e.y,'#8fd6ff',26,260);
+            burst(e.x,e.y,PAPER,14,200);
+            eBullets.length=0; lasers.length=0; // 撃破で弾消去のご褒美
+            items.push({x:e.x,y:e.y,vy:55,t:0}); // 確定ドロップ
+            S.shake=Math.max(S.shake,8);
+            SFX.boss();
+          }
+        }
+      }
+      continue;
+    }
+    if(e.kind==='boss'){
+      // ゲージブレイク: 1本割るごとに弾消去のご褒美 → 次段階はより激しく
+      const remB=Math.ceil(e.hp/(e.perBar||e.maxHp));
+      if(e.lastBars===undefined) e.lastBars=remB;
+      if(remB<e.lastBars){
+        e.lastBars=remB;
+        eBullets.length=0;
+        const gbGain=Math.round(500*S.mult);
+        S.score+=gbGain;
+        popup(e.x, e.y-70, '+'+gbGain+' GAUGE BREAK', GOLD);
+        burst(e.x,e.y,GOLD,20,240);
+        S.shake=Math.max(S.shake,6);
+        SFX.boom();
+        e.fireT=Math.max(e.fireT,0.9); // 段階の切れ目にひと呼吸
+      }
+      if(!e.purged && e.hp<=e.maxHp*0.5){
+        e.purged=true; // 外殻パージ: コア露出+攻撃加速
+        burst(e.x,e.y,MAGENTA,30,280);
+        burst(e.x,e.y,PAPER,16,200);
+        S.shake=Math.max(S.shake,8);
+        popup(e.x,e.y-64,'SHELL PURGE',GOLD);
+      }
+      e.y += (H*0.18 - e.y)*Math.min(dt*1.4,1);
+      e.x = W/2 + Math.sin(e.t*0.5)*(W*0.24);
+      if(e.fireT<=0 && e.y>H*0.08) bossFire(e);
+    }else{
+      if(e.edge==='left'||e.edge==='right'){
+        // 横入り: 横断しながら上下に揺れる(画面外へ抜けたら退場)
+        e.x += e.vx*dt;
+        e.y = e.baseY + Math.sin(e.t*1.6)*26;
+        if(e.x<-80||e.x>W+80) e.dead=true;
+      }else if(e.edge==='bottom'){
+        // 下から: せり上がって上空へ陣取る
+        e.y += e.vy*dt*(e.y>H*0.45?1:0.3);
+        if(e.kind==='drift') e.x = e.baseX + Math.sin(e.t*1.4)*60;
+        if(e.kind==='spinner') e.x = e.baseX + Math.sin(e.t*0.8)*30;
+      }else{
+        e.y+=e.vy*dt*(e.y<H*0.45?1:0.25);
+        if(e.kind==='drift') e.x = e.baseX + Math.sin(e.t*1.4)*60;
+        if(e.kind==='spinner') e.x = e.baseX + Math.sin(e.t*0.8)*30;
+        if(e.kind==='mine') e.x = e.baseX + Math.sin(e.t*1.1)*14;
+        if(e.kind==='splitkid'){ e.x += e.vx*dt; e.vx *= Math.max(0, 1-1.8*dt); }
+      }
+      const onScreen = e.x>-10&&e.x<W+10&&e.y>-10&&e.y<H+10;
+      if(e.fireT<=0 && onScreen){
+        enemyFire(e);
+        const st=(e.stage||1);
+        const ease = (S.waveIntensity||1)<0.8 ? 1.3 : 1; // 凪(静)ウェーブは息継ぎ
+        e.fireT = (e.kind==='spinner'
+          ? Math.max(rnd(2.4,3.2) - (st-1)*0.2, 1.4)
+          : e.kind==='split' ? rnd(2.0,2.8)
+          : e.kind==='splitkid' ? rnd(1.4,2.2)
+          : Math.max(rnd(1.0,1.8) - (st-1)*0.12, 0.5)) * ease;
+      }
+    }
+    // collide with player bullets
+    for(const b of bullets){
+      if(b.dead)continue;
+      const dx=e.x-b.x,dy=e.y-b.y;
+      if(dx*dx+dy*dy < (e.r+b.r)*(e.r+b.r)){
+        b.dead=true; e.hp--; e.hitT=0.07;
+        particles.push({x:b.x,y:b.y,vx:rnd(-40,40),vy:rnd(-80,-20),life:.2,max:.2,color:PAPER});
+        if(e.hp<=0){
+          e.dead=true;
+          if(e.kind==='boss'){ bossDown(e); }
+          else{
+            const gain = Math.round(100*S.mult);
+            S.score+=gain;
+            popup(e.x,e.y,'+'+gain, S.mult>=4?GOLD:CYAN);
+            deathFx(e);
+            S.shake=Math.max(S.shake,3);
+            const dropP = (S.waveIntensity||1)<0.8 ? 0.28 : 0.16; // 凪は恵みの時間
+            if(e.kind!=='splitkid' && Math.random()<dropP) items.push({x:e.x,y:e.y,vy:55,t:0});
+            if(e.kind==='split'){
+              // 撃破で2体の分裂仔が左右に飛び散る
+              for(const sdir of [-1,1]){
+                enemies.push({x:e.x+sdir*8, y:e.y, hp:2, maxHp:2, r:9, t:rnd(0,TAU),
+                  fireT:rnd(0.6,1.2), kind:'splitkid', vy:rnd(34,52), vx:sdir*rnd(70,120),
+                  baseX:e.x, baseY:0, dead:false, stage:e.stage, edge:'top'});
+              }
+            }
+          }
+        }
+      }
+    }
+    if(e.kind!=='boss' && (e.y>H+100 || e.y<-100) && e.t>1.5)e.dead=true;
+  }
+  bullets=bullets.filter(b=>!b.dead);
+  enemies=enemies.filter(e=>!e.dead);
+
+  // enemy bullets: graze & hit
+  for(const b of eBullets){
+    b.x+=b.vx*dt;b.y+=b.vy*dt;
+    const dx=b.x-player.x, dy=b.y-player.y, d2=dx*dx+dy*dy;
+    // 被弾直前スロー: 至近距離+自機に向かう弾で発動
+    if(S.inv<=0 && !b.warned && d2 < 22*22){
+      if(-dx*b.vx + -dy*b.vy > 0){ // 弾が自機方向へ進行中
+        b.warned=true;
+        S.slowT=Math.max(S.slowT,0.2);
+      }
+    }
+    // hit
+    if(S.inv<=0 && d2 < (player.r+b.r)*(player.r+b.r)){
+      b.dead=true; hitPlayer(); continue;
+    }
+    // graze
+    if(!b.grazed && d2 < player.grazeR*player.grazeR){
+      b.grazed=true;
+      S.grazeCount++;
+      S.grazeFlash=0.22;
+      SFX.graze();
+      S.gauge = clamp(S.gauge + 0.09, 0, 1);
+      if(S.gauge>=1){
+        S.gauge=0;
+        S.mult = Math.min(S.mult+0.5, 8);
+        S.maxMult=Math.max(S.maxMult,S.mult);
+        SFX.multUp();
+        popup(player.x, player.y-44, '×'+S.mult.toFixed(1), GOLD);
+        burst(player.x,player.y,GOLD,10,120);
+      }
+      S.score += Math.round(10*S.mult);
+      particles.push({x:b.x,y:b.y,vx:rnd(-30,30),vy:rnd(-30,30),life:.3,max:.3,color:CYAN});
+    }
+  }
+  eBullets=eBullets.filter(b=>!b.dead && b.x>-20&&b.x<W+20&&b.y>-20&&b.y<H+20);
+
+  // lasers: 予告 → 発射 → 消滅
+  for(const L of lasers){
+    L.t+=dt;
+    // 追尾: 予告中は自機をロックし続け、照射が始まると角度が固定される
+    if(L.follow>0 && L.t<L.warn){
+      const ta=Math.atan2(player.y-L.y, player.x-L.x);
+      let da=ta-L.a;
+      while(da>Math.PI)da-=TAU; while(da<-Math.PI)da+=TAU;
+      L.a += da*Math.min(L.follow*dt*3.2,1);
+    }
+    // 薙ぎ払い: 照射中に角度が回転していく
+    if(L.sweep && L.t>=L.warn){
+      L.a += L.sweep*dt;
+    }
+    if(L.t>=L.warn && !L.zapped){ L.zapped=true; SFX.laser(); S.shake=Math.max(S.shake,3); }
+    if(L.t>=L.warn && L.t<L.warn+L.fire){
+      // 点とレイの距離で判定
+      const dx=player.x-L.x, dy=player.y-L.y;
+      const proj=dx*Math.cos(L.a)+dy*Math.sin(L.a);
+      if(proj>0){
+        const perp=Math.abs(-Math.sin(L.a)*dx+Math.cos(L.a)*dy);
+        if(S.inv<=0 && perp < L.w/2+player.r){
+          hitPlayer();
+        }else if(!L.grazed && perp < player.grazeR){
+          L.grazed=true;
+          doGraze(player.x-(-Math.sin(L.a))*perp, player.y-Math.cos(L.a)*perp);
+        }
+      }
+    }
+  }
+  lasers=lasers.filter(L=>L.t<L.warn+L.fire+0.12);
+
+  // particles & popups
+  for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=0.96;p.vy*=0.96;p.life-=dt;}
+  particles=particles.filter(p=>p.life>0);
+  for(const bu of bursts){bu.life-=dt;bu.r+=900*dt;}
+  bursts=bursts.filter(b=>b.life>0);
+  for(const p of popups){p.y-=34*dt;p.life-=dt;}
+  popups=popups.filter(p=>p.life>0);
+
+  // エクステンド: スコア閾値で残機+1(上限5)
+  while(S.extendIdx<EXTENDS.length && S.score>=EXTENDS[S.extendIdx]){
+    S.extendIdx++;
+    if(S.lives<5){
+      S.lives++;
+      popup(player.x, player.y-56, 'EXTEND', MAGENTA);
+      burst(player.x, player.y, MAGENTA, 14, 150);
+      SFX.extend();
+    }
+  }
+
+  // 出現予告マーカーの寿命
+  for(const m of markers){ m.life-=dt; }
+  markers=markers.filter(m=>m.life>0);
+
+  updateHUD();
+}
+
+function doBurst(){
+  if(!S.running || S.paused || S.hitStop>0) return;
+  if(!S.dev){
+    if(S.bombs<=0) return;
+    S.bombs--;
+  } // DEVモードはBREAK無限
+  SFX.burst();
+  // 画面上の敵弾を全てスコアに変換して消去
+  let gain=0;
+  for(const b of eBullets){
+    gain += Math.round(20*S.mult);
+    particles.push({x:b.x,y:b.y,vx:rnd(-60,60),vy:rnd(-60,60),life:.35,max:.35,color:CYAN});
+  }
+  S.score+=gain;
+  if(gain>0) popup(player.x, player.y-50, '+'+gain+' BREAK', CYAN);
+  eBullets.length=0;
+  lasers.length=0;
+  S.inv=Math.max(S.inv,1.2); // 発動後の短い無敵
+  S.shake=8;
+  bursts.push({x:player.x,y:player.y,r:0,life:0.5});
+  updateHUD();
+}
+
+function hitPlayer(){
+  SFX.hit();
+  if(!S.dev) S.lives--; // DEVモードは不死身
+  S.inv=1.6; S.shake=10; S.hitStop=0.09;
+  S.mult=1; S.gauge=0;
+  burst(player.x,player.y,PAPER,30,260);
+  // 周囲の弾を消す(救済)
+  eBullets=eBullets.filter(b=>{
+    const dx=b.x-player.x,dy=b.y-player.y;
+    return dx*dx+dy*dy > 180*180;
+  });
+  if(S.lives<=0) gameOver();
+}
+
+// ---------- draw ----------
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  ctx.save();
+  if(S.shake>0)ctx.translate(rnd(-S.shake,S.shake),rnd(-S.shake,S.shake));
+
+  // 背景の深度: ステージが進むほど敵地の構造物が現れる
+  const bgStage = Math.min(S.stage||1, 5);
+  if(bgStage>=2){
+    // 薄いグリッド(下へ流れる)
+    const ga=Math.min((bgStage-1)*0.022,0.07);
+    ctx.strokeStyle=`rgba(120,140,180,${ga})`;
+    ctx.lineWidth=1;
+    const gs=90, goff=(S.t*18)%gs;
+    ctx.beginPath();
+    for(let gy=goff;gy<H;gy+=gs){ctx.moveTo(0,gy);ctx.lineTo(W,gy);}
+    for(let gx=gs/2;gx<W;gx+=gs){ctx.moveTo(gx,0);ctx.lineTo(gx,H);}
+    ctx.stroke();
+  }
+  if(bgStage>=3){
+    // 漂う残骸のシルエット
+    const da=Math.min(0.05+(bgStage-3)*0.015,0.1);
+    ctx.strokeStyle=`rgba(154,163,184,${da})`;
+    ctx.lineWidth=1;
+    for(let i=0;i<6;i++){
+      const dx2=((i*137)%100)/100*W;
+      const dsp=10+(i%3)*6;
+      const dy2=(((i*761)%100)/100*H + S.t*dsp) % (H+120) - 60;
+      const dsz=18+(i%4)*10;
+      ctx.save();
+      ctx.translate(dx2,dy2);
+      ctx.rotate(i*1.1+S.t*0.05);
+      ctx.strokeRect(-dsz/2,-dsz/4,dsz,dsz/2);
+      ctx.restore();
+    }
+  }
+
+  // stars
+  ctx.fillStyle='rgba(232,236,242,0.25)';
+  for(const s of stars)ctx.fillRect(s.x,s.y,s.s,s.s*3);
+
+  // 出現予告マーカー(出現する辺で点滅する三角)
+  for(const m of markers){
+    if(Math.floor(m.life*14)%2===0) continue; // 点滅
+    const a=clamp(m.life/m.max,0,1);
+    ctx.fillStyle=`rgba(255,45,120,${0.4+a*0.5})`;
+    ctx.shadowColor=MAGENTA;ctx.shadowBlur=8;
+    ctx.beginPath();
+    if(m.edge==='bottom'){
+      ctx.moveTo(m.x-7,H-8);ctx.lineTo(m.x+7,H-8);ctx.lineTo(m.x,H-20);
+    }else if(m.edge==='left'){
+      ctx.moveTo(8,m.y-7);ctx.lineTo(8,m.y+7);ctx.lineTo(20,m.y);
+    }else if(m.edge==='right'){
+      ctx.moveTo(W-8,m.y-7);ctx.lineTo(W-8,m.y+7);ctx.lineTo(W-20,m.y);
+    }else{
+      ctx.moveTo(m.x-7,8);ctx.lineTo(m.x+7,8);ctx.lineTo(m.x,20);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur=0;
+  }
+
+  // ---- graze ring (視認性強化版) ----
+  {
+    const hot = S.gauge>0.7;
+    const flash = clamp(S.grazeFlash/0.22, 0, 1);          // かすった瞬間 1→0
+    const pulse = 1 + Math.sin(S.t*4)*0.04;                 // ゆっくり脈動
+    const R = player.grazeR * (pulse + flash*0.12);
+    const baseCol = hot ? '255,209,102' : '0,229,255';
+
+    // 内側の淡い塗り(判定範囲を面で見せる)
+    const g = ctx.createRadialGradient(player.x,player.y,R*0.45, player.x,player.y,R);
+    g.addColorStop(0, `rgba(${baseCol},0)`);
+    g.addColorStop(1, `rgba(${baseCol},${0.10 + flash*0.22})`);
+    ctx.fillStyle = g;
+    ctx.beginPath();ctx.arc(player.x,player.y,R,0,TAU);ctx.fill();
+
+    // ベースの円(常時はっきり見える実線)
+    ctx.shadowColor = hot ? GOLD : CYAN;
+    ctx.shadowBlur = 10 + flash*18;
+    ctx.strokeStyle = `rgba(${baseCol},${0.55 + flash*0.45})`;
+    ctx.lineWidth = 1.5 + flash*1.5;
+    ctx.beginPath();ctx.arc(player.x,player.y,R,0,TAU);ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // ゲージ進捗アーク(真上から時計回り、満タンで倍率UPの予告になる)
+    if(S.gauge>0){
+      ctx.strokeStyle = hot ? GOLD : CYAN;
+      ctx.lineWidth = 3.5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(player.x,player.y,R+5, -Math.PI/2, -Math.PI/2 + S.gauge*TAU);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+    }
+  }
+
+  // player trail
+  for(let i=player.trail.length-1;i>0;i--){
+    const t=player.trail[i], a=(1-i/player.trail.length)*0.35;
+    ctx.fillStyle=`rgba(0,229,255,${a})`;
+    ctx.fillRect(t.x-1.5,t.y-1.5,3,3);
+  }
+
+  // player (blink when invincible)
+  if(S.inv<=0 || Math.floor(S.t*16)%2===0){
+    ctx.save();
+    ctx.translate(player.x,player.y);
+    ctx.shadowColor=CYAN; ctx.shadowBlur=16;
+    ctx.fillStyle=CYAN;
+    ctx.beginPath();
+    ctx.moveTo(0,-11);ctx.lineTo(8,9);ctx.lineTo(0,4);ctx.lineTo(-8,9);ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur=0;
+    ctx.fillStyle=PAPER;
+    ctx.fillRect(-1.5,-3,3,3); // core
+    ctx.restore();
+  }
+
+  // player bullets
+  for(const b of bullets){
+    if(b.homing){
+      ctx.save();
+      ctx.translate(b.x,b.y);
+      ctx.rotate(Math.atan2(b.vy,b.vx)+Math.PI/2);
+      ctx.fillStyle=GOLD;
+      ctx.shadowColor=GOLD;ctx.shadowBlur=8;
+      ctx.beginPath();ctx.moveTo(0,-7);ctx.lineTo(4,5);ctx.lineTo(0,2);ctx.lineTo(-4,5);ctx.closePath();ctx.fill();
+      ctx.restore();
+      ctx.shadowBlur=0;
+    }else{
+      ctx.fillStyle=PAPER;
+      ctx.fillRect(b.x-1.5,b.y-7,3,12);
+    }
+  }
+
+  // items (ホーミングアイテム)
+  for(const it of items){
+    ctx.save();
+    ctx.translate(it.x,it.y);
+    ctx.rotate(it.t*1.6);
+    ctx.strokeStyle=GOLD;ctx.lineWidth=1.5;
+    ctx.fillStyle='rgba(255,209,102,0.15)';
+    ctx.shadowColor=GOLD;ctx.shadowBlur=12+Math.sin(it.t*6)*5;
+    ctx.beginPath();
+    for(let i=0;i<6;i++){const a=i/6*TAU;ctx.lineTo(Math.cos(a)*11,Math.sin(a)*11);}
+    ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.rotate(-it.t*1.6);
+    ctx.shadowBlur=0;
+    ctx.fillStyle=GOLD;
+    ctx.font='700 10px "Avenir Next","Helvetica Neue",sans-serif';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('H',0,1);
+    ctx.restore();
+    ctx.textBaseline='alphabetic';
+  }
+
+  // mid-bosses(機械兵: 生物ボスと対照的な無機質デザイン)
+  for(const e of enemies){
+    if(e.kind!=='midboss') continue;
+    ctx.save();
+    ctx.translate(e.x,e.y);
+    const hpR=clamp(e.hp/e.maxHp,0,1);
+    const flash=(e.hitT||0)>0;
+    const mc = flash ? PAPER : '#7fd0ff'; // シアン寄りの機械色で本ボスと差別化
+    ctx.shadowColor='#00e5ff';ctx.shadowBlur=16;
+    ctx.strokeStyle=mc;ctx.lineWidth=2.2;ctx.fillStyle='rgba(0,229,255,0.10)';
+    // 外周リング(逆回転・破線風の弧)
+    ctx.save();ctx.rotate(-e.spin*0.6);
+    for(let i=0;i<4;i++){
+      const a0=i/4*TAU;
+      ctx.beginPath();ctx.arc(0,0,e.r*1.25,a0,a0+0.9);ctx.stroke();
+    }
+    ctx.restore();
+    // 砲塔(現在の攻撃モードを示す)3基
+    ctx.save();ctx.rotate(e.spin*0.5);
+    for(let i=0;i<3;i++){
+      ctx.save();ctx.rotate(i/3*TAU);
+      ctx.translate(0,-e.r*0.95);
+      const active = (e.mode===i);
+      ctx.fillStyle = active ? (flash?PAPER:'#bff0ff') : 'rgba(0,229,255,0.12)';
+      ctx.beginPath();
+      ctx.moveTo(-5,-6);ctx.lineTo(5,-6);ctx.lineTo(7,5);ctx.lineTo(-7,5);ctx.closePath();
+      ctx.fill();ctx.stroke();
+      ctx.restore();
+    }
+    ctx.restore();
+    // 八角の装甲コア
+    ctx.beginPath();
+    for(let i=0;i<8;i++){const a=i/8*TAU+e.spin*0.2;ctx.lineTo(Math.cos(a)*e.r,Math.sin(a)*e.r);}
+    ctx.closePath();ctx.fill();ctx.stroke();
+    // 内部メカ(逆回転六角+中央アイ)
+    ctx.save();ctx.rotate(-e.spin);
+    ctx.strokeStyle=flash?PAPER:'rgba(0,229,255,0.6)';ctx.lineWidth=1.4;
+    ctx.beginPath();
+    for(let i=0;i<6;i++){const a=i/6*TAU;ctx.lineTo(Math.cos(a)*e.r*0.5,Math.sin(a)*e.r*0.5);}
+    ctx.closePath();ctx.stroke();
+    ctx.restore();
+    // 中央アイ(攻撃直前に白熱)
+    const charging = e.fireT>0 && e.fireT<0.3;
+    ctx.fillStyle = charging ? PAPER : '#00e5ff';
+    ctx.shadowBlur=14;
+    ctx.beginPath();ctx.arc(0,0,e.r*0.18,0,TAU);ctx.fill();
+    ctx.shadowBlur=0;
+    ctx.restore();
+    // HPバー(本ボスより細い・シアン)
+    const bw=80;
+    ctx.fillStyle='rgba(255,255,255,0.1)';
+    ctx.fillRect(e.x-bw/2, e.y-e.r-14, bw, 3);
+    ctx.fillStyle='#00e5ff';
+    ctx.shadowColor='#00e5ff';ctx.shadowBlur=6;
+    ctx.fillRect(e.x-bw/2, e.y-e.r-14, bw*hpR, 3);
+    ctx.shadowBlur=0;
+  }
+
+  // enemies
+  for(const e of enemies){
+    if(e.kind==='midboss') continue;
+    // スラスター: 進行方向の逆側にちらつく噴射光
+    if(e.kind!=='boss' && Math.floor(S.t*30+e.t*10)%2===0){
+      let tvx=e.vx||0, tvy=e.vy||0;
+      if(e.edge==='left'||e.edge==='right') tvy=0;
+      const tmag=Math.hypot(tvx,tvy);
+      if(tmag>5){
+        const tnx=tvx/tmag, tny=tvy/tmag;
+        ctx.fillStyle='rgba(255,158,192,0.75)';
+        ctx.fillRect(e.x-tnx*(e.r+6)-1.5, e.y-tny*(e.r+6)-1.5, 3, 3+rnd(0,3));
+      }
+    }
+    ctx.save();
+    ctx.translate(e.x,e.y);
+    const hpR = e.maxHp ? clamp(e.hp/e.maxHp,0,1) : 1;
+    const lowHP = hpR<=0.4;
+    const flash = (e.hitT||0)>0;
+    if(lowHP) ctx.translate(rnd(-1.2,1.2),rnd(-1.2,1.2)); // 損傷の震え
+    const cs = STAGE_COLS[Math.min((e.stage||1)-1, STAGE_COLS.length-1)];
+    let col = cs.st;
+    if(flash) col = PAPER;                                  // 被弾の白フラッシュ
+    else if(lowHP && Math.floor(S.t*16)%3===0) col='#ff9ec0'; // 撃破寸前の明滅
+    ctx.shadowColor=cs.st;ctx.shadowBlur=12;
+    ctx.strokeStyle=col;ctx.lineWidth=2;ctx.fillStyle=cs.fill;
+    // 出現演出: 0.22秒かけてワイヤーフレームから実体化
+    if(e.t<0.22 && e.kind!=='boss'){
+      const wk=0.6+(e.t/0.22)*0.4;
+      ctx.scale(wk,wk);
+      ctx.fillStyle='rgba(0,0,0,0)';
+      ctx.lineWidth=1.2;
+    }
+    if(e.kind==='boss'){
+      const enr = e.purged;                       // 段階変身後(白熱)
+      const spd = enr ? 1.6 : 1;
+      const flap = Math.sin(e.t*2.6*spd);
+      const charging = e.fireT>0 && e.fireT<0.4;
+      const breath = 1+Math.sin(e.t*2.2)*0.018;   // 呼吸の脈動
+      ctx.shadowBlur=22+(e.rage||0)*14;
+      ctx.lineWidth=2.2;
+      ctx.lineJoin='round';ctx.lineCap='round'; // 角を滑らかに
+      ctx.scale(breath,breath);
+      // === 質感パス: 足元の発光ディスク+多層オーラ ===
+      const ug=ctx.createRadialGradient(0,0,e.r*0.2, 0,0,e.r*1.7);
+      ug.addColorStop(0,`rgba(${cs.rgb},0.13)`);
+      ug.addColorStop(1,`rgba(${cs.rgb},0)`);
+      ctx.fillStyle=ug;
+      ctx.beginPath();ctx.arc(0,0,e.r*1.7,0,TAU);ctx.fill();
+      for(const ring of [[1.35,1,0],[1.52,-1,2]]){ // 逆回転する2層の断片弧
+        ctx.strokeStyle=`rgba(${cs.rgb},0.20)`;
+        ctx.lineWidth=1;
+        const a0=e.t*0.5*ring[1]+ring[2];
+        for(let k2=0;k2<3;k2++){
+          ctx.beginPath();ctx.arc(0,0,e.r*ring[0], a0+k2*TAU/3, a0+k2*TAU/3+1.1);ctx.stroke();
+        }
+      }
+      // 立体感のあるボディグラデ(左上から光が当たる)
+      const bodyFill=ctx.createRadialGradient(-e.r*0.25,-e.r*0.35,e.r*0.1, 0,0,e.r*1.25);
+      bodyFill.addColorStop(0,`rgba(${cs.rgb},0.34)`);
+      bodyFill.addColorStop(0.55,`rgba(${cs.rgb},0.14)`);
+      bodyFill.addColorStop(1,`rgba(${cs.rgb},0.04)`);
+      ctx.fillStyle=bodyFill;
+      ctx.strokeStyle=col;
+      ctx.lineWidth=2.2;
+      if(enr){ // 変身後: 脈打つオーラ輪
+        ctx.strokeStyle='rgba(232,236,242,0.16)';
+        ctx.lineWidth=1;
+        ctx.beginPath();ctx.arc(0,0,e.r*(1.28+Math.sin(e.t*5)*0.06),0,TAU);ctx.stroke();
+        ctx.lineWidth=2.2;
+      }
+      ctx.strokeStyle=col;
+      if(e.bossType===0){
+        // ============ BOSS 1: 鷲 ============
+        // 尾羽(3枚扇)
+        for(const ti of [-1,0,1]){
+          ctx.save();ctx.rotate(ti*0.22);
+          ctx.beginPath();
+          ctx.moveTo(0,-e.r*0.3);ctx.lineTo(-e.r*0.07,-e.r*0.85);ctx.lineTo(e.r*0.07,-e.r*0.85);
+          ctx.closePath();ctx.fill();ctx.stroke();
+          ctx.restore();
+        }
+        // 翼: 風切羽が分離したギザギザ後縁+内側の雨覆ライン
+        for(const sd of [-1,1]){
+          ctx.save();ctx.scale(sd,1);ctx.rotate(-flap*0.27);
+          ctx.beginPath();
+          ctx.moveTo(e.r*0.15,-e.r*0.05);
+          ctx.quadraticCurveTo(e.r*0.62,-e.r*0.68, e.r*1.45,-e.r*0.42);
+          ctx.lineTo(e.r*1.32,-e.r*0.12);
+          ctx.lineTo(e.r*1.18,-e.r*0.28);
+          ctx.lineTo(e.r*1.05,e.r*0.02);
+          ctx.lineTo(e.r*0.9,-e.r*0.14);
+          ctx.lineTo(e.r*0.76,e.r*0.14);
+          ctx.lineTo(e.r*0.6,-e.r*0.02);
+          ctx.lineTo(e.r*0.42,e.r*0.26);
+          ctx.lineTo(e.r*0.18,e.r*0.3);
+          ctx.closePath();ctx.fill();ctx.stroke();
+          ctx.beginPath(); // 雨覆
+          ctx.moveTo(e.r*0.25,0);ctx.quadraticCurveTo(e.r*0.75,-e.r*0.42, e.r*1.2,-e.r*0.3);
+          ctx.stroke();
+          glowDot(e.r*1.45,-e.r*0.42,2.2,PAPER,0.8); // 翼端灯
+          ctx.restore();
+        }
+        // 胴体+胸羽
+        ctx.beginPath();
+        ctx.moveTo(0,-e.r*0.38);ctx.lineTo(e.r*0.24,-e.r*0.05);ctx.lineTo(e.r*0.16,e.r*0.4);
+        ctx.lineTo(0,e.r*0.55);ctx.lineTo(-e.r*0.16,e.r*0.4);ctx.lineTo(-e.r*0.24,-e.r*0.05);
+        ctx.closePath();ctx.fill();ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-e.r*0.1,e.r*0.05);ctx.lineTo(0,e.r*0.18);ctx.lineTo(e.r*0.1,e.r*0.05);
+        ctx.moveTo(-e.r*0.08,e.r*0.22);ctx.lineTo(0,e.r*0.33);ctx.lineTo(e.r*0.08,e.r*0.22);
+        ctx.stroke();
+        // 鉤爪
+        for(const sd of [-1,1]){
+          ctx.beginPath();
+          ctx.moveTo(sd*e.r*0.1,e.r*0.45);ctx.lineTo(sd*e.r*0.2,e.r*0.64);ctx.lineTo(sd*e.r*0.12,e.r*0.6);
+          ctx.stroke();
+        }
+        // 頭: 鉤型の嘴+金の眼光
+        ctx.strokeStyle=enr?PAPER:col;
+        ctx.beginPath();
+        ctx.moveTo(-e.r*0.14,e.r*0.5);ctx.lineTo(e.r*0.14,e.r*0.5);ctx.lineTo(e.r*0.09,e.r*0.72);
+        ctx.lineTo(0,e.r*0.88);ctx.lineTo(-e.r*0.06,e.r*0.7);ctx.closePath();
+        if(enr){ ctx.fillStyle='rgba(232,236,242,0.25)'; ctx.fill(); }
+        ctx.stroke();
+        ctx.fillStyle=(enr||charging)?PAPER:GOLD;
+        ctx.shadowBlur=12;
+        ctx.fillRect(-e.r*0.08-1.5, e.r*0.56-1.5, 3,3);
+        ctx.fillRect( e.r*0.08-1.5, e.r*0.56-1.5, 3,3);
+        ctx.shadowBlur=22;
+      }else if(e.bossType===1){
+        // ============ BOSS 2: 人型 ============
+        const sw=Math.sin(e.t*1.8*spd)*0.16;
+        // 背後の回転ヘイロー(六角)
+        ctx.save();ctx.rotate(e.t*0.6*spd);
+        ctx.strokeStyle='rgba(232,236,242,0.13)';ctx.lineWidth=1.2;
+        ctx.beginPath();
+        for(let i=0;i<6;i++){const a=i/6*TAU;ctx.lineTo(Math.cos(a)*e.r*1.15,Math.sin(a)*e.r*1.15);}
+        ctx.closePath();ctx.stroke();
+        ctx.restore();
+        ctx.strokeStyle=col;ctx.lineWidth=2.2;
+        // 脚(太線の腿+脛+足先)
+        ctx.lineWidth=4;
+        for(const sd of [-1,1]){
+          ctx.beginPath();
+          ctx.moveTo(sd*e.r*0.12,e.r*0.4);ctx.lineTo(sd*e.r*0.22,e.r*0.62);ctx.lineTo(sd*e.r*0.17,e.r*0.85);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(sd*e.r*0.17,e.r*0.85);ctx.lineTo(sd*e.r*0.3,e.r*0.85);
+          ctx.stroke();
+        }
+        // 腕(太線・二関節)+掌
+        for(const sd of [-1,1]){
+          const ex=sd*e.r*0.95, ey=e.r*0.12+sd*sw*e.r*0.3;
+          ctx.beginPath();
+          ctx.moveTo(sd*e.r*0.5,-e.r*0.34);
+          ctx.lineTo(sd*e.r*0.78,-e.r*0.04+sw*sd*e.r*0.15);
+          ctx.lineTo(ex,ey);
+          ctx.stroke();
+        }
+        ctx.lineWidth=2.2;
+        // 骨盤→腹部→胸甲(三層の装甲)
+        ctx.beginPath();
+        ctx.moveTo(-e.r*0.2,e.r*0.28);ctx.lineTo(e.r*0.2,e.r*0.28);ctx.lineTo(0,e.r*0.46);ctx.closePath();
+        ctx.fill();ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-e.r*0.18,0);ctx.lineTo(e.r*0.18,0);ctx.lineTo(e.r*0.13,e.r*0.26);ctx.lineTo(-e.r*0.13,e.r*0.26);
+        ctx.closePath();ctx.fill();ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-e.r*0.34,-e.r*0.4);ctx.lineTo(e.r*0.34,-e.r*0.4);ctx.lineTo(e.r*0.26,-e.r*0.02);ctx.lineTo(-e.r*0.26,-e.r*0.02);
+        ctx.closePath();ctx.fill();ctx.stroke();
+        // 肩アーマー+肩の光点
+        for(const sd of [-1,1]){
+          ctx.beginPath();
+          ctx.moveTo(sd*e.r*0.22,-e.r*0.44);ctx.lineTo(sd*e.r*0.62,-e.r*0.52);
+          ctx.lineTo(sd*e.r*0.55,-e.r*0.22);ctx.lineTo(sd*e.r*0.22,-e.r*0.3);
+          ctx.closePath();ctx.fill();ctx.stroke();
+          glowDot(sd*e.r*0.5,-e.r*0.42,2,PAPER,0.65);
+        }
+        // 掌(充填光)
+        for(const sd of [-1,1]){
+          const ex=sd*e.r*0.95, ey=e.r*0.12+sd*sw*e.r*0.3;
+          ctx.fillStyle = charging ? PAPER : 'rgba(255,45,120,0.55)';
+          ctx.shadowBlur = charging ? 16 : 8;
+          ctx.beginPath();
+          ctx.moveTo(ex,ey-6);ctx.lineTo(ex+5,ey);ctx.lineTo(ex,ey+6);ctx.lineTo(ex-5,ey);ctx.closePath();
+          ctx.fill();
+        }
+        ctx.shadowBlur=22;ctx.fillStyle=bodyFill;
+        // 頭(六角)+バイザー光
+        ctx.beginPath();
+        for(let i=0;i<6;i++){const a=i/6*TAU-Math.PI/2;ctx.lineTo(Math.cos(a)*e.r*0.22,-e.r*0.62+Math.sin(a)*e.r*0.22);}
+        ctx.closePath();ctx.fill();ctx.stroke();
+        ctx.strokeStyle=(charging||enr)?PAPER:'rgba(232,236,242,0.75)';
+        ctx.lineWidth=2.5;
+        ctx.beginPath();
+        ctx.moveTo(-e.r*0.13,-e.r*0.62);ctx.lineTo(e.r*0.13,-e.r*0.62);
+        ctx.stroke();
+        ctx.strokeStyle=col;ctx.lineWidth=2.2;
+        // 胸部コア(変身後は露出)
+        ctx.strokeStyle=enr?PAPER:col;
+        ctx.beginPath();ctx.arc(0,-e.r*0.18,e.r*0.1,0,TAU);
+        if(enr){ ctx.fillStyle='rgba(232,236,242,0.3)'; ctx.fill(); ctx.fillStyle=bodyFill; }
+        ctx.stroke();
+      }else if(e.bossType===2){
+        // ============ BOSS 3: 鬼 ============
+        // 髪(角の間で逆立つジグザグ)
+        ctx.beginPath();
+        ctx.moveTo(-e.r*0.35,-e.r*0.5);
+        for(let i=0;i<5;i++){
+          ctx.lineTo(-e.r*0.35+(i+0.5)*e.r*0.14, -e.r*(0.72+(i%2)*0.12));
+          ctx.lineTo(-e.r*0.35+(i+1)*e.r*0.14, -e.r*0.5);
+        }
+        ctx.stroke();
+        // 角(節リング付き)
+        for(const sd of [-1,1]){
+          ctx.beginPath();
+          ctx.moveTo(sd*e.r*0.35,-e.r*0.5);
+          ctx.lineTo(sd*e.r*0.6,-e.r*1.05);
+          ctx.lineTo(sd*e.r*0.62,-e.r*0.45);
+          ctx.closePath();ctx.fill();ctx.stroke();
+          ctx.beginPath(); // 節
+          ctx.moveTo(sd*e.r*0.44,-e.r*0.68);ctx.lineTo(sd*e.r*0.61,-e.r*0.65);
+          ctx.moveTo(sd*e.r*0.51,-e.r*0.86);ctx.lineTo(sd*e.r*0.615,-e.r*0.84);
+          ctx.stroke();
+          glowDot(sd*e.r*0.6,-e.r*1.05,2.2,PAPER,0.8); // 角先の光
+        }
+        // 面
+        ctx.beginPath();
+        ctx.moveTo(-e.r*0.7,-e.r*0.55);ctx.lineTo(e.r*0.7,-e.r*0.55);
+        ctx.lineTo(e.r*0.85,e.r*0.1);ctx.lineTo(e.r*0.4,e.r*0.7);
+        ctx.lineTo(-e.r*0.4,e.r*0.7);ctx.lineTo(-e.r*0.85,e.r*0.1);
+        ctx.closePath();ctx.fill();ctx.stroke();
+        // 頬の隈取り
+        ctx.beginPath();
+        ctx.moveTo(-e.r*0.55,-e.r*0.1);ctx.lineTo(-e.r*0.34,e.r*0.28);
+        ctx.moveTo(e.r*0.55,-e.r*0.1);ctx.lineTo(e.r*0.34,e.r*0.28);
+        ctx.stroke();
+        // 怒り眉(太)
+        ctx.lineWidth=3.2;
+        ctx.beginPath();
+        ctx.moveTo(-e.r*0.08,-e.r*0.28);ctx.lineTo(-e.r*0.5,-e.r*0.42);
+        ctx.moveTo(e.r*0.08,-e.r*0.28);ctx.lineTo(e.r*0.5,-e.r*0.42);
+        ctx.stroke();
+        ctx.lineWidth=2.2;
+        // 鼻
+        ctx.beginPath();
+        ctx.moveTo(0,-e.r*0.1);ctx.lineTo(e.r*0.07,e.r*0.08);ctx.lineTo(-e.r*0.07,e.r*0.08);ctx.closePath();
+        ctx.stroke();
+        // 牙: 大牙2本+下顎のジグザグ歯
+        for(const sd of [-1,1]){
+          ctx.beginPath();
+          ctx.moveTo(sd*e.r*0.3,e.r*0.62);ctx.lineTo(sd*e.r*0.36,e.r*0.38);ctx.lineTo(sd*e.r*0.2,e.r*0.6);
+          ctx.closePath();ctx.fill();ctx.stroke();
+        }
+        ctx.beginPath();
+        ctx.moveTo(-e.r*0.4,e.r*0.7);
+        for(let i=0;i<4;i++){
+          ctx.lineTo(-e.r*0.4+(i+0.5)*e.r*0.2, e.r*0.52);
+          ctx.lineTo(-e.r*0.4+(i+1)*e.r*0.2, e.r*0.7);
+        }
+        ctx.stroke();
+        // 目(発射前と変身後に白熱、たまに瞬き)
+        const eyeOn = enr || charging || Math.floor(S.t*3)%5!==0;
+        ctx.fillStyle = eyeOn ? ((enr||charging)?PAPER:'rgba(255,45,120,0.9)') : 'rgba(255,45,120,0.2)';
+        ctx.shadowBlur=14;
+        for(const sd of [-1,1]){
+          ctx.beginPath();
+          ctx.moveTo(sd*e.r*0.18,-e.r*0.15);ctx.lineTo(sd*e.r*0.5,-e.r*0.32);ctx.lineTo(sd*e.r*0.45,-e.r*0.08);ctx.closePath();
+          ctx.fill();
+        }
+        ctx.shadowBlur=22;ctx.fillStyle=bodyFill;
+      }else if(e.bossType===3){
+        // ============ BOSS 4: 悪魔 ============
+        const spread=0.85+(enr?0.25:0)+flap*0.07;
+        // 背後の逆三角シジル(逆回転)
+        ctx.save();ctx.rotate(-e.t*0.5*spd);
+        ctx.strokeStyle='rgba(232,236,242,0.11)';ctx.lineWidth=1.2;
+        ctx.beginPath();
+        ctx.moveTo(0,e.r*1.05);ctx.lineTo(e.r*0.9,-e.r*0.55);ctx.lineTo(-e.r*0.9,-e.r*0.55);ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
+        ctx.strokeStyle=col;ctx.lineWidth=2.2;
+        // コウモリ翼(膜+指骨)
+        for(const sd of [-1,1]){
+          ctx.save();ctx.scale(sd,1);ctx.rotate(-flap*0.12);
+          ctx.beginPath();
+          ctx.moveTo(e.r*0.15,-e.r*0.05);
+          ctx.quadraticCurveTo(e.r*0.85*spread,-e.r*0.72, e.r*1.5*spread,-e.r*0.25);
+          ctx.lineTo(e.r*1.25*spread,e.r*0.1);
+          ctx.lineTo(e.r*1.0*spread,-e.r*0.02);
+          ctx.lineTo(e.r*0.75*spread,e.r*0.22);
+          ctx.lineTo(e.r*0.5*spread,e.r*0.08);
+          ctx.lineTo(e.r*0.2,e.r*0.3);
+          ctx.closePath();ctx.fill();ctx.stroke();
+          ctx.beginPath(); // 指骨3本
+          ctx.moveTo(e.r*0.18,-e.r*0.02);ctx.lineTo(e.r*0.9*spread,-e.r*0.6);
+          ctx.moveTo(e.r*0.2,e.r*0.03);ctx.lineTo(e.r*1.0*spread,-e.r*0.02);
+          ctx.moveTo(e.r*0.2,e.r*0.1);ctx.lineTo(e.r*0.5*spread,e.r*0.08);
+          ctx.stroke();
+          glowDot(e.r*1.5*spread,-e.r*0.25,2.2,PAPER,0.75); // 翼端の爪光
+          ctx.restore();
+        }
+        // 体(逆三角)+肋ライン
+        ctx.beginPath();
+        ctx.moveTo(-e.r*0.28,-e.r*0.25);ctx.lineTo(e.r*0.28,-e.r*0.25);ctx.lineTo(0,e.r*0.5);ctx.closePath();
+        ctx.fill();ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-e.r*0.2,-e.r*0.12);ctx.lineTo(e.r*0.2,-e.r*0.12);
+        ctx.moveTo(-e.r*0.13,e.r*0.02);ctx.lineTo(e.r*0.13,e.r*0.02);
+        ctx.stroke();
+        // 頭+太い三日月角(塗り)
+        ctx.beginPath();ctx.arc(0,-e.r*0.45,e.r*0.18,0,TAU);ctx.fill();ctx.stroke();
+        for(const sd of [-1,1]){
+          ctx.beginPath();
+          ctx.moveTo(sd*e.r*0.12,-e.r*0.56);
+          ctx.quadraticCurveTo(sd*e.r*0.52,-e.r*0.72, sd*e.r*0.44,-e.r*1.04);
+          ctx.quadraticCurveTo(sd*e.r*0.3,-e.r*0.8, sd*e.r*0.04,-e.r*0.6);
+          ctx.closePath();ctx.fill();ctx.stroke();
+        }
+        // 目スリット
+        ctx.fillStyle=(enr||charging)?PAPER:'rgba(255,45,120,0.9)';
+        ctx.shadowBlur=12;
+        ctx.fillRect(-e.r*0.1-1.5,-e.r*0.47,4,2.5);
+        ctx.fillRect( e.r*0.1-2.5,-e.r*0.47,4,2.5);
+        ctx.shadowBlur=22;ctx.fillStyle=bodyFill;
+        // 尻尾(節チック+矢じり)
+        const tx=Math.sin(e.t*2*spd)*e.r*0.35;
+        ctx.beginPath();
+        ctx.moveTo(0,e.r*0.5);
+        ctx.quadraticCurveTo(tx,e.r*0.85, tx*1.3, e.r*1.05);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(tx*0.45,e.r*0.72);ctx.lineTo(tx*0.45+5,e.r*0.7);
+        ctx.moveTo(tx*0.9,e.r*0.9);ctx.lineTo(tx*0.9+5,e.r*0.88);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(tx*1.3,e.r*1.0);ctx.lineTo(tx*1.3+6,e.r*1.14);ctx.lineTo(tx*1.3-6,e.r*1.14);ctx.closePath();
+        ctx.fill();ctx.stroke();
+      }else{
+        // ============ BOSS 5: 龍 ============
+        const dir = Math.cos(e.t*0.5)>=0 ? 1 : -1;
+        ctx.save();
+        ctx.scale(dir,1);
+        // 胴体: 鱗チックと背びれ、末尾は尾びれの扇
+        const segs=9;
+        // 背骨: 節を貫く連続曲線(ひとつの長躯として繋がって見せる)
+        ctx.strokeStyle=`rgba(${cs.rgb},0.45)`;
+        ctx.lineWidth=5;
+        ctx.beginPath();
+        for(let i=segs;i>=0;i--){
+          const sx=-i*e.r*0.30;
+          const sy=Math.sin(e.t*2.0*spd - i*0.7)*e.r*0.3;
+          if(i===segs)ctx.moveTo(sx,sy);else ctx.lineTo(sx,sy);
+        }
+        ctx.stroke();
+        ctx.strokeStyle=col;ctx.lineWidth=2.2;
+        for(let i=segs;i>=1;i--){
+          const sx=-i*e.r*0.30;
+          const sy=Math.sin(e.t*2.0*spd - i*0.7)*e.r*0.3;
+          const sr=e.r*(0.34 - i*0.022);
+          ctx.beginPath();
+          ctx.moveTo(sx,sy-sr);ctx.lineTo(sx+sr,sy);ctx.lineTo(sx,sy+sr);ctx.lineTo(sx-sr,sy);ctx.closePath();
+          ctx.fill();ctx.stroke();
+          ctx.beginPath(); // 鱗
+          ctx.arc(sx,sy,sr*0.5,-0.7,0.7);
+          ctx.stroke();
+          if(i%2===0){ // 背びれ
+            ctx.beginPath();
+            ctx.moveTo(sx-sr*0.4,sy-sr*0.8);ctx.lineTo(sx,sy-sr*1.7);ctx.lineTo(sx+sr*0.4,sy-sr*0.8);
+            ctx.stroke();
+          }
+          if(i===segs){ // 尾びれの扇
+            ctx.beginPath();
+            ctx.moveTo(sx,sy);ctx.lineTo(sx-sr*2.4,sy-sr*1.4);
+            ctx.moveTo(sx,sy);ctx.lineTo(sx-sr*2.8,sy);
+            ctx.moveTo(sx,sy);ctx.lineTo(sx-sr*2.4,sy+sr*1.4);
+            ctx.stroke();
+          }
+        }
+        // 頭部
+        const hy=Math.sin(e.t*2.0*spd)*e.r*0.3;
+        ctx.translate(0,hy);
+        const jaw = charging ? 0.3 : 0.1+Math.sin(e.t*3)*0.04; // 充填時に顎が開く
+        // 上顎(歯付き)
+        ctx.beginPath();
+        ctx.moveTo(-e.r*0.1,-e.r*0.32);
+        ctx.lineTo(e.r*0.5,-e.r*0.24);
+        ctx.lineTo(e.r*0.88,-e.r*0.04);
+        ctx.lineTo(e.r*0.55,e.r*0.0);
+        ctx.lineTo(-e.r*0.1,e.r*0.05);
+        ctx.closePath();ctx.fill();ctx.stroke();
+        ctx.beginPath(); // 歯
+        ctx.moveTo(e.r*0.78,-e.r*0.03);ctx.lineTo(e.r*0.74,e.r*0.04);
+        ctx.moveTo(e.r*0.62,-e.r*0.01);ctx.lineTo(e.r*0.58,e.r*0.06);
+        ctx.stroke();
+        // 下顎(開閉)
+        ctx.save();
+        ctx.translate(e.r*0.05,e.r*0.02);
+        ctx.rotate(jaw);
+        ctx.beginPath();
+        ctx.moveTo(0,0);ctx.lineTo(e.r*0.62,e.r*0.08);ctx.lineTo(e.r*0.5,e.r*0.2);ctx.lineTo(0,e.r*0.16);
+        ctx.closePath();ctx.fill();ctx.stroke();
+        ctx.restore();
+        // ヒゲ(2本の流線)
+        ctx.beginPath();
+        ctx.moveTo(e.r*0.78,-e.r*0.06);
+        ctx.quadraticCurveTo(e.r*1.15,e.r*0.05, e.r*1.0,e.r*0.4);
+        ctx.moveTo(e.r*0.8,e.r*0.02);
+        ctx.quadraticCurveTo(e.r*1.05,e.r*0.25, e.r*0.85,e.r*0.55);
+        ctx.stroke();
+        glowDot(e.r*1.0,e.r*0.4,1.8,GOLD,0.8);  // 髭先の宝珠光
+        glowDot(e.r*0.85,e.r*0.55,1.8,GOLD,0.8);
+        // 枝角(フォーク)
+        ctx.beginPath();
+        ctx.moveTo(e.r*0.08,-e.r*0.3);ctx.lineTo(-e.r*0.26,-e.r*0.62);ctx.lineTo(-e.r*0.44,-e.r*0.76);
+        ctx.moveTo(-e.r*0.26,-e.r*0.62);ctx.lineTo(-e.r*0.2,-e.r*0.86);
+        ctx.moveTo(e.r*0.26,-e.r*0.27);ctx.lineTo(0,-e.r*0.74);
+        ctx.stroke();
+        glowDot(-e.r*0.44,-e.r*0.76,2,PAPER,0.7); // 枝角の先端光
+        // たてがみ(後方へ3本)
+        ctx.beginPath();
+        ctx.moveTo(-e.r*0.1,-e.r*0.28);ctx.lineTo(-e.r*0.36,-e.r*0.42);
+        ctx.moveTo(-e.r*0.1,-e.r*0.16);ctx.lineTo(-e.r*0.4,-e.r*0.22);
+        ctx.moveTo(-e.r*0.1,-e.r*0.04);ctx.lineTo(-e.r*0.38,-e.r*0.02);
+        ctx.stroke();
+        // 眼(縦スリット瞳)
+        ctx.fillStyle = (enr||charging) ? PAPER : 'rgba(255,209,102,0.95)';
+        ctx.shadowBlur=14;
+        ctx.fillRect(e.r*0.3-1.5,-e.r*0.16,3,7);
+        ctx.shadowBlur=22;ctx.fillStyle=bodyFill;
+        ctx.restore();
+      }
+      ctx.restore();
+      // HPゲージ: 現在の1本の減りと残り本数(×N)
+      const perBar=e.perBar||e.maxHp, bw=110;
+      const remBars=Math.max(1,Math.ceil(e.hp/perBar));
+      const inBar=e.hp-(remBars-1)*perBar;
+      const ratio=clamp(inBar/perBar,0,1);
+      ctx.fillStyle='rgba(255,255,255,0.1)';
+      ctx.fillRect(e.x-bw/2, e.y-e.r-18, bw, 4);
+      ctx.fillStyle=cs.st;
+      ctx.shadowColor=cs.st;ctx.shadowBlur=8;
+      ctx.fillRect(e.x-bw/2, e.y-e.r-18, bw*ratio, 4);
+      ctx.shadowBlur=0;
+      ctx.fillStyle=PAPER;
+      ctx.font='700 11px "Avenir Next","Helvetica Neue",sans-serif';
+      ctx.textAlign='left';
+      ctx.fillText('×'+remBars, e.x+bw/2+7, e.y-e.r-12);
+      ctx.textAlign='center';
+      continue;
+    }else if(e.kind==='spinner'){
+      // 歯車: 歯の数=リング弾の数と連動
+      const sst=(e.stage||1);
+      const ghard=Math.min(0.45+(sst-1)*0.22,1.4);
+      const teeth=8+Math.floor(ghard*5);
+      ctx.rotate(e.t*1.8);
+      ctx.beginPath();
+      for(let i=0;i<teeth*2;i++){
+        const a=i/(teeth*2)*TAU;
+        const rr=(i%2===0)?e.r:e.r*0.72;
+        ctx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);
+      }
+      ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.beginPath();ctx.arc(0,0,e.r*0.34,0,TAU);ctx.stroke(); // 軸
+      ctx.restore();
+      continue;
+    }else if(e.kind==='aimer'){
+      // 照準リング: 発射0.35秒前に収縮しながら光る
+      if(e.fireT>0 && e.fireT<0.35){
+        const pr=e.fireT/0.35;
+        ctx.strokeStyle=`rgba(255,122,0,${0.95-pr*0.55})`;
+        ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.arc(0,0,e.r+4+pr*24,0,TAU);ctx.stroke();
+        ctx.strokeStyle=col;ctx.lineWidth=2;
+      }
+      ctx.rotate(Math.atan2(player.y-e.y,player.x-e.x)+Math.PI/2);
+      ctx.beginPath();ctx.moveTo(0,e.r);ctx.lineTo(e.r*0.9,-e.r*0.8);ctx.lineTo(0,-e.r*0.3);ctx.lineTo(-e.r*0.9,-e.r*0.8);ctx.closePath();
+    }else if(e.kind==='mine'){
+      // 機雷: 8芒星。爆発が近づくほど速く白点滅
+      const fr=clamp((e.fuse||0)/4.5,0,1);
+      const hz=3+(1-fr)*14;
+      if(Math.sin(S.t*hz*TAU)>0){ ctx.strokeStyle=PAPER; ctx.shadowBlur=18; }
+      ctx.rotate(e.t*0.9);
+      ctx.beginPath();
+      for(let i=0;i<8;i++){
+        const a=i/8*TAU;
+        const rr=(i%2===0)?e.r:e.r*0.4;
+        ctx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);
+      }
+      ctx.closePath();
+    }else if(e.kind==='split'){
+      // スプリッター: 脈打つ大きな菱形+分裂線
+      const pl=1+Math.sin(e.t*3)*0.06;
+      ctx.beginPath();
+      ctx.moveTo(0,-e.r*pl);ctx.lineTo(e.r*0.8,0);ctx.lineTo(0,e.r*pl);ctx.lineTo(-e.r*0.8,0);ctx.closePath();
+      ctx.moveTo(0,-e.r*0.55);ctx.lineTo(0,e.r*0.55);
+    }else if(e.kind==='splitkid'){
+      // 分裂仔: 回転する小菱形
+      ctx.rotate(e.t*2.2);
+      ctx.beginPath();
+      ctx.moveTo(0,-e.r);ctx.lineTo(e.r*0.8,0);ctx.lineTo(0,e.r);ctx.lineTo(-e.r*0.8,0);ctx.closePath();
+    }else{
+      // ドリフト: シェブロン(逆V)= 扇状弾の予告形状
+      ctx.rotate(Math.sin(e.t)*0.18);
+      ctx.beginPath();
+      ctx.moveTo(0,-e.r*0.75);
+      ctx.lineTo(e.r,e.r*0.7);
+      ctx.lineTo(e.r*0.5,e.r*0.7);
+      ctx.lineTo(0,0);
+      ctx.lineTo(-e.r*0.5,e.r*0.7);
+      ctx.lineTo(-e.r,e.r*0.7);
+      ctx.closePath();
+    }
+    ctx.fill();ctx.stroke();
+    ctx.restore();
+  }
+
+  // lasers: 予告線(点滅破線) → ビーム(白コア+グロー)
+  for(const L of lasers){
+    const len=Math.hypot(W,H)+200;
+    const ex=L.x+Math.cos(L.a)*len, ey=L.y+Math.sin(L.a)*len;
+    if(L.t<L.warn){
+      // 予告線: 発射が近づくほど明るく、終盤は速い点滅
+      const p=L.t/L.warn;
+      if(p>0.65 && Math.floor(S.t*16)%2===0){ /* 直前は点滅で消える */ }
+      else{
+        ctx.strokeStyle=`rgba(255,45,120,${0.22+p*0.6})`;
+        ctx.lineWidth=1.5;
+        ctx.setLineDash([8,8]);
+        ctx.lineDashOffset=-S.t*60;
+        ctx.beginPath();ctx.moveTo(L.x,L.y);ctx.lineTo(ex,ey);ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.lineDashOffset=0;
+      }
+    }else if(L.t<L.warn+L.fire){
+      const q=1-(L.t-L.warn)/L.fire; // 減衰
+      ctx.shadowColor=MAGENTA;ctx.shadowBlur=22;
+      ctx.strokeStyle=`rgba(255,45,120,${0.5+q*0.45})`;
+      ctx.lineWidth=L.w*q+3;
+      ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(L.x,L.y);ctx.lineTo(ex,ey);ctx.stroke();
+      ctx.strokeStyle=`rgba(232,236,242,${0.85*q})`;
+      ctx.lineWidth=Math.max(2,L.w*0.35*q);
+      ctx.beginPath();ctx.moveTo(L.x,L.y);ctx.lineTo(ex,ey);ctx.stroke();
+      ctx.lineCap='butt';
+      ctx.shadowBlur=0;
+    }
+  }
+
+  // enemy bullets
+  for(const b of eBullets){
+    if(b.kind==='aim'){
+      // 自機狙い弾: オレンジの菱形
+      ctx.save();
+      ctx.translate(b.x,b.y);
+      ctx.rotate(Math.atan2(b.vy,b.vx));
+      ctx.fillStyle = b.grazed ? 'rgba(255,122,0,0.45)' : '#ff7a00';
+      ctx.shadowColor='#ff7a00'; ctx.shadowBlur=b.grazed?0:10;
+      ctx.beginPath();
+      ctx.moveTo(7,0);ctx.lineTo(0,4.5);ctx.lineTo(-7,0);ctx.lineTo(0,-4.5);ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      ctx.shadowBlur=0;
+    }else if(b.kind==='needle'){
+      // 針弾: 進行方向に伸びる高速弾(オレンジ)
+      ctx.save();
+      ctx.translate(b.x,b.y);
+      ctx.rotate(Math.atan2(b.vy,b.vx));
+      ctx.fillStyle = b.grazed ? 'rgba(255,122,0,0.45)' : '#ff7a00';
+      ctx.shadowColor='#ff7a00'; ctx.shadowBlur=b.grazed?0:8;
+      ctx.beginPath();
+      ctx.moveTo(10,0);ctx.lineTo(-8,2);ctx.lineTo(-8,-2);ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      ctx.shadowBlur=0;
+    }else if(b.kind==='sq'){
+      // 角弾: くるくる回る小さな四角(マゼンタ)
+      ctx.save();
+      ctx.translate(b.x,b.y);
+      ctx.rotate(S.t*5);
+      ctx.fillStyle = b.grazed ? 'rgba(255,45,120,0.45)' : MAGENTA;
+      ctx.shadowColor=MAGENTA; ctx.shadowBlur=b.grazed?0:7;
+      const sz=b.r*1.6;
+      ctx.fillRect(-sz/2,-sz/2,sz,sz);
+      ctx.restore();
+      ctx.shadowBlur=0;
+    }else if(b.r>=8){
+      // 大弾: 遅いが存在感のある重圧(輪郭+白いコア)
+      ctx.shadowColor=MAGENTA; ctx.shadowBlur=b.grazed?0:16;
+      ctx.strokeStyle = b.grazed ? 'rgba(255,45,120,0.45)' : MAGENTA;
+      ctx.lineWidth=2.5;
+      ctx.fillStyle='rgba(255,45,120,0.16)';
+      ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,TAU);ctx.fill();ctx.stroke();
+      ctx.fillStyle = b.grazed ? 'rgba(232,236,242,0.4)' : PAPER;
+      ctx.beginPath();ctx.arc(b.x,b.y,b.r*0.3,0,TAU);ctx.fill();
+      ctx.shadowBlur=0;
+    }else{
+      // 小弾・中弾: 通常の円(サイズで速度感を表現)
+      ctx.fillStyle = b.grazed ? 'rgba(255,45,120,0.45)' : MAGENTA;
+      ctx.shadowColor=MAGENTA; ctx.shadowBlur=b.grazed?0:8;
+      ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,TAU);ctx.fill();
+      ctx.shadowBlur=0;
+    }
+  }
+
+  // ボス予告: 点滅するWARNING
+  if(S.bossWarnT>0 && Math.floor(S.t*6)%2===0){
+    ctx.fillStyle=MAGENTA;
+    ctx.shadowColor=MAGENTA; ctx.shadowBlur=20;
+    ctx.font='800 30px "Avenir Next","Helvetica Neue",sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText('W A R N I N G', W/2, H*0.4);
+    ctx.shadowBlur=0;
+    ctx.fillRect(W*0.2, H*0.4-46, W*0.6, 1.5);
+    ctx.fillRect(W*0.2, H*0.4+16, W*0.6, 1.5);
+  }
+
+  // 危機スロー中の警告リング
+  if(S.slowT>0){
+    ctx.strokeStyle=`rgba(232,236,242,${clamp(S.slowT/0.2,0,1)*0.8})`;
+    ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(player.x,player.y,13+Math.sin(S.t*40)*2,0,TAU);ctx.stroke();
+  }
+
+  // BREAKの拡大リング
+  for(const bu of bursts){
+    const a=clamp(bu.life/0.5,0,1);
+    ctx.strokeStyle=`rgba(0,229,255,${a*0.9})`;
+    ctx.lineWidth=3*a+1;
+    ctx.shadowColor=CYAN;ctx.shadowBlur=20*a;
+    ctx.beginPath();ctx.arc(bu.x,bu.y,bu.r,0,TAU);ctx.stroke();
+    ctx.strokeStyle=`rgba(232,236,242,${a*0.4})`;
+    ctx.lineWidth=1;
+    ctx.beginPath();ctx.arc(bu.x,bu.y,bu.r*0.8,0,TAU);ctx.stroke();
+    ctx.shadowBlur=0;
+  }
+
+  // particles
+  for(const p of particles){
+    ctx.globalAlpha=clamp(p.life/p.max,0,1);
+    ctx.fillStyle=p.color;
+    ctx.fillRect(p.x-2,p.y-2,4,4);
+  }
+  ctx.globalAlpha=1;
+
+  // popups
+  ctx.textAlign='center';
+  ctx.font='700 13px "Avenir Next","Helvetica Neue",sans-serif';
+  for(const p of popups){
+    ctx.globalAlpha=clamp(p.life/0.8,0,1);
+    ctx.fillStyle=p.color;
+    ctx.fillText(p.text,p.x,p.y);
+  }
+  ctx.globalAlpha=1;
+  ctx.restore();
+}
+
+// ---------- HUD ----------
+const elScore=document.getElementById('score'),
+      elMult=document.getElementById('mult'),
+      elLives=document.getElementById('lives'),
+      elGauge=document.getElementById('gauge'),
+      elBombs=document.getElementById('bombs'),
+      elBurstBtn=document.getElementById('burstBtn'),
+      elHoming=document.getElementById('homingHud');
+elBurstBtn.addEventListener('pointerdown',e=>{e.stopPropagation();doBurst();});
+function updateHUD(){
+  elScore.textContent=S.score.toLocaleString();
+  elMult.textContent='×'+S.mult.toFixed(1);
+  elMult.classList.toggle('hot',S.mult>=4);
+  elGauge.style.width=(S.gauge*100)+'%';
+  elGauge.classList.toggle('hot',S.gauge>0.7);
+  elLives.textContent='◆'.repeat(Math.max(S.lives,0))+'◇'.repeat(Math.max(3-S.lives,0));
+  elBombs.textContent='▲'.repeat(S.bombs)+'△'.repeat(Math.max(3-S.bombs,0));
+  elBurstBtn.classList.toggle('empty',S.bombs<=0);
+  elHoming.textContent = S.homingT>0 ? 'HOMING '+Math.ceil(S.homingT)+'s' : '';
+}
+
+// ---------- loop ----------
+let last=0;
+function loop(ts){
+  let dt=Math.min((ts-last)/1000,0.033); last=ts;
+  if(S.dev && S.ffwd) dt*=3; // DEV倍速
+  if(S.running && !S.paused){
+    if(S.slowT>0){ S.slowT-=dt; dt*=0.3; } // 危機スロー
+    if(S.hitStop>0){S.hitStop-=dt;}
+    else update(dt);
+    draw();
+  }
+  requestAnimationFrame(loop);
+}
+
+// ---------- flow ----------
+const titleScreen=document.getElementById('titleScreen'),
+      overScreen=document.getElementById('overScreen'),
+      hud=document.getElementById('hud');
+let best = 0;
+try{ best = Number(localStorage.getItem('grazeline_best')) || 0; }catch(e){}
+const pauseScreen=document.getElementById('pauseScreen'),
+      elBestTitle=document.getElementById('bestTitle'),
+      devHud=document.getElementById('devHud'),
+      devFf=document.getElementById('devFf');
+
+function updateBestLabel(){
+  if(best>0){
+    elBestTitle.textContent='BEST '+best.toLocaleString();
+    elBestTitle.classList.remove('hidden');
+  }
+}
+
+function pauseGame(){
+  if(!S.running || (S.demo && !S.dev) || S.paused) return;
+  S.paused=true;
+  pauseScreen.classList.remove('hidden');
+}
+function resumeGame(){
+  S.paused=false;
+  pauseScreen.classList.add('hidden');
+}
+function goTitle(){
+  S.paused=false;
+  pauseScreen.classList.add('hidden');
+  overScreen.classList.add('hidden');
+  hud.classList.add('hidden');
+  titleScreen.classList.remove('hidden');
+  updateBestLabel();
+  demoStart();
+}
+
+function start(){
+  reset();
+  S.demo=false; S.dev=false; S.paused=false;
+  devHud.classList.add('hidden');
+  titleScreen.classList.add('hidden');
+  overScreen.classList.add('hidden');
+  pauseScreen.classList.add('hidden');
+  hud.classList.remove('hidden');
+  S.running=true;
+}
+function demoStart(){
+  reset();
+  S.demo=true; S.dev=false; S.paused=false;
+  devHud.classList.add('hidden');
+  S.running=true;
+}
+
+function devStart(){
+  reset();
+  S.demo=true; S.dev=true; S.paused=false; S.ffwd=false;
+  titleScreen.classList.add('hidden');
+  overScreen.classList.add('hidden');
+  pauseScreen.classList.add('hidden');
+  hud.classList.remove('hidden');
+  devHud.classList.remove('hidden');
+  devFf.classList.add('hidden');
+  S.running=true;
+}
+
+// DEV用: 場をリセットして指定の進行へ飛ぶ
+function devClearField(){
+  enemies.length=0; eBullets.length=0; items.length=0; markers.length=0; lasers.length=0;
+  S.spawnQueue=0; S.bossActive=false; S.calmT=0; S.bossWarnT=0; S.waveRestT=0;
+}
+function devNextWave(){
+  devClearField();
+  spawnWave(); S.waveT=30;
+}
+function devNextBoss(){
+  devClearField();
+  const def=STAGE_DEF[S.stage-1];
+  if(S.stageWave>=def.waves){ // すでにボスなら次ステージのボスへ
+    S.stage=Math.min(S.stage+1, STAGE_DEF.length);
+    S.stageWave=0;
+  }
+  S.stageWave=STAGE_DEF[S.stage-1].waves-1;
+  spawnWave(); S.waveT=30;
+}
+function showResult(stageLabel){
+  hud.classList.add('hidden');
+  devHud.classList.add('hidden');
+  document.getElementById('finalScore').textContent=S.score.toLocaleString();
+  document.getElementById('finalWave').textContent=stageLabel;
+  document.getElementById('finalMult').textContent='×'+S.maxMult.toFixed(1);
+  document.getElementById('finalGraze').textContent=S.grazeCount;
+  const tag=document.getElementById('bestTag');
+  if(S.score>best){
+    best=S.score;
+    try{ localStorage.setItem('grazeline_best', String(best)); }catch(e){}
+    tag.classList.remove('hidden');
+  }
+  else tag.classList.add('hidden');
+  overScreen.classList.remove('hidden');
+}
+
+function gameOver(){
+  if(S.demo){ reset(); return; } // デモは静かに最初から
+  S.running=false;
+  const eb=document.getElementById('overEyebrow');
+  eb.textContent='SIGNAL LOST'; eb.style.color='var(--magenta)';
+  document.getElementById('clearBonus').classList.add('hidden');
+  showResult(S.stage+'-'+Math.max(S.stageWave,1));
+}
+
+function gameClear(){
+  if(S.demo){ reset(); return; } // デモ/DEVは静かに最初から
+  S.running=false;
+  // クリアボーナス: 残機×10,000 + BREAK×5,000
+  const bonus = S.lives*10000 + S.bombs*5000;
+  S.score += bonus;
+  const eb=document.getElementById('overEyebrow');
+  eb.textContent='MISSION COMPLETE'; eb.style.color='var(--gold)';
+  const cb=document.getElementById('clearBonus');
+  cb.textContent='CLEAR BONUS +'+bonus.toLocaleString();
+  cb.classList.remove('hidden');
+  showResult('ALL');
+}
+document.getElementById('startBtn').addEventListener('click',start);
+document.getElementById('devBtn').addEventListener('click',devStart);
+document.getElementById('retryBtn').addEventListener('click',start);
+document.getElementById('titleBtn').addEventListener('click',goTitle);
+document.getElementById('pauseBtn').addEventListener('pointerdown',e=>{e.stopPropagation();pauseGame();});
+document.getElementById('resumeBtn').addEventListener('click',resumeGame);
+document.getElementById('pauseTitleBtn').addEventListener('click',goTitle);
+
+// Esc / P でポーズ切替
+window.addEventListener('keydown',e=>{
+  if(e.code==='Escape'||e.code==='KeyP'){
+    if(S.paused) resumeGame(); else pauseGame();
+  }
+  // DEVモード専用キー
+  if(S.dev && S.running && !S.paused){
+    if(e.code==='KeyN') devNextWave();
+    if(e.code==='KeyB') devNextBoss();
+    if(e.code==='KeyM'){ devClearField(); S.stageWave=STAGE_DEF[S.stage-1].midAt-1; spawnWave(); S.waveT=30; }
+    if(e.code==='KeyF'){
+      S.ffwd=!S.ffwd;
+      devFf.classList.toggle('hidden',!S.ffwd);
+    }
+  }
+});
+// タブが裏に回ったら自動ポーズ
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden) pauseGame();
+});
+
+// ミュートボタン
+const muteBtn=document.getElementById('muteBtn');
+function refreshMuteBtn(){
+  muteBtn.textContent = muted ? 'SOUND OFF' : 'SOUND ON';
+  muteBtn.classList.toggle('off',muted);
+}
+muteBtn.addEventListener('click',()=>{
+  muted=!muted;
+  try{ localStorage.setItem('grazeline_mute', muted?'1':'0'); }catch(e){}
+  refreshMuteBtn();
+});
+refreshMuteBtn();
+
+// 起動時: タイトル背景としてデモを開始
+updateBestLabel();
+demoStart();
+requestAnimationFrame(ts=>{last=ts;requestAnimationFrame(loop);});
+})();
+</script>
+</body>
+</html>
