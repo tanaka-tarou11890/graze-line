@@ -204,14 +204,14 @@
     <span class="mg">敵弾</span>に<b>スレスレでかする</b>とゲージが溜まり、倍率が上昇（最大 <b>×8.0</b>）。被弾で全リセット。<br>
     <span style="color:#ff7a00">オレンジの弾</span>は自機狙い。<span class="mg">点滅する予告線</span>の先はレーザー。<br>
     敵は<b>崩れた像</b>で漂い、<b>撃つ直前に像が揃う</b>。揃ったら来る。<br>
-    全<b>5ステージ</b>、各最深部に<span class="mg">ボス</span>。<br>
+    全<b>5ステージ</b>。道中に<span class="mg">中ボス</span>（ステージごとに別機体）、最深部に<span class="mg">ボス</span>。<br>
     追い詰められたら <b>BREAK</b>（Space / X / 右下のボタン / 二本目の指でタップ）。<br>
     金の<span style="color:var(--gold)">「H」</span>で<span style="color:var(--gold)">追尾弾</span>が8秒。
     <span class="mg">50,000 / 200,000 / 500,000 / 1,000,000</span> 点で残機+1。
   </div>
   <button class="start-btn" id="startBtn">START</button>
   <button id="devBtn">DEV MODE ▸</button>
-  <div style="margin-top:14px;font-size:8px;letter-spacing:.3em;color:#3a4156">BUILD 2026-09-03 v2</div>
+  <div style="margin-top:14px;font-size:8px;letter-spacing:.3em;color:#3a4156">BUILD 2026-09-03 v2.1</div>
 </div>
 
 <div id="devHud" class="hidden">
@@ -248,7 +248,7 @@
 <button id="muteBtn">SOUND ON</button>
 
 <script>
-console.log('GRAZE//LINE build 2026-09-03 v2 (portrait / dimensional / data-entity enemies)');
+console.log('GRAZE//LINE build 2026-09-03 v2.1 (portrait / dimensional / data-entity enemies / 5 midbosses)');
 (() => {
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
@@ -419,7 +419,9 @@ function spawnWave(){
   const isBoss = S.stageWave >= def.waves;
   const isMid = S.stageWave === def.midAt;
   document.getElementById('wave').textContent =
-    'STAGE '+S.stage+'/5 — '+(isBoss ? 'BOSS' : isMid ? 'MID-BOSS' : 'WAVE '+S.stageWave+'/'+def.waves);
+    'STAGE '+S.stage+'/5 — '+(isBoss ? 'BOSS'
+      : isMid ? 'MID-BOSS ' + (MIDBOSS_NAMES[Math.min(S.stage-1,MIDBOSS_NAMES.length-1)]||'')
+      : 'WAVE '+S.stageWave+'/'+def.waves);
   if(isBoss){
     S.bossActive=true;
     S.spawnQueue=0;
@@ -441,44 +443,186 @@ function spawnWave(){
   S.squadTimeout = 9;
 }
 
-// 中ボスの弾幕: 3モードを巡回(精密ではなく圧で攻める)
+// 中ボスの名前(HUDに出す。ステージごとに別機体)
+const MIDBOSS_NAMES=['監視ノード','双基ドローン','走査ラティス','分光プリズム','崩壊コア'];
+
+// 中ボスの弾幕: 機体ごとに3モードを巡回する。
+// 本ボスと違いレーザーは持たず、圧と手数で押してくる関門役。
+const MID_SETS=[
+  // ---- M0 監視ノード: 回転スポーク / 狙い撃ち / 隙間リング ----
+  [
+    function(e,sp){ // 回転スポーク(6本腕)
+      for(let j=0;j<6;j++){
+        const a=e.spin+j*TAU/6;
+        eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.75,vy:Math.sin(a)*sp*0.75,r:3.5,grazed:false,kind:'sq'});
+      }
+      e.fireT=0.12;
+    },
+    function(e,sp){ // 自機狙いの3-wayショットガン
+      const a0=Math.atan2(player.y-e.y,player.x-e.x);
+      for(let i=-1;i<=1;i++){
+        eBullets.push({x:e.x,y:e.y,vx:Math.cos(a0+i*0.2)*(sp+50),vy:Math.sin(a0+i*0.2)*(sp+50),r:4,grazed:false,kind:'aim'});
+      }
+      e.fireT=0.5;
+    },
+    function(e,sp){ // 拡散リング(隙間つき)
+      const k=14, gap=Math.floor(rnd(0,k));
+      for(let i=0;i<k;i++){
+        if(Math.abs(i-gap)<=1) continue;
+        const a=i/k*TAU+e.spin*0.3;
+        eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.6,vy:Math.sin(a)*sp*0.6,r:4,grazed:false});
+      }
+      e.fireT=0.9;
+    }
+  ],
+  // ---- M1 双基ドローン: 左右の副機が交互に、あるいは同時に撃つ ----
+  [
+    function(e,sp){ // 交互射撃: 片側の副機から自機へ2連。撃つ側が予告になる
+      e.side=-(e.side||1);
+      const ox=e.side*e.r*1.15;
+      const a=Math.atan2(player.y-e.y, player.x-(e.x+ox));
+      for(let i=0;i<2;i++){
+        eBullets.push({x:e.x+ox,y:e.y,vx:Math.cos(a)*(sp+40+i*60),vy:Math.sin(a)*(sp+40+i*60),
+          r:4,grazed:false,kind:'aim'});
+      }
+      e.fireT=0.36;
+    },
+    function(e,sp){ // 挟み込み: 左右の副機から内向きの扇。中央が最後に閉じる
+      for(const sd of [-1,1]){
+        const ox=sd*e.r*1.15;
+        for(let i=0;i<4;i++){
+          const a=Math.PI/2 - sd*(0.10+i*0.16);
+          eBullets.push({x:e.x+ox,y:e.y,vx:Math.cos(a)*sp*0.85,vy:Math.sin(a)*sp*0.85,r:4,grazed:false});
+        }
+      }
+      e.fireT=0.8;
+    },
+    function(e,sp){ // 弾のカーテン: 隙間が左右に揺れる(軌道を読んで潜る)
+      const cols=12;
+      const gap=Math.floor((0.5+0.42*Math.sin(e.t*1.1))*(cols-3))+1;
+      for(let i=0;i<cols;i++){
+        if(Math.abs(i-gap)<=1) continue;
+        eBullets.push({x:(i+0.5)/cols*W,y:e.y-8,vx:0,vy:sp*0.8,r:4.5,grazed:false});
+      }
+      e.fireT=1.6;
+    }
+  ],
+  // ---- M2 走査ラティス: 面で塗り潰す。避け場所が刻々と移る ----
+  [
+    function(e,sp){ // スイープシャワー: 噴射方向が左右へ往復する
+      const a0=Math.PI/2 + Math.sin(e.t*2.4)*0.95;
+      for(let i=0;i<3;i++){
+        const a=a0+(i-1)*0.12;
+        eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.82,vy:Math.sin(a)*sp*0.82,r:3.2,grazed:false});
+      }
+      e.fireT=0.14;
+    },
+    function(e,sp){ // 格子列: 半ピッチずれた縦列が交互に降る
+      e.lat=(e.lat||0)+1;
+      const cols=9, shift=(e.lat%2)*(W/cols)*0.5;
+      for(let i=0;i<cols;i++){
+        const x=(W*(i+0.5)/cols + shift) % W;
+        eBullets.push({x,y:e.y-8,vx:0,vy:sp*0.7,r:4,grazed:false,kind:'sq'});
+      }
+      e.fireT=1.15;
+    },
+    function(e,sp){ // 収束針: 自機狙いの高速針3連(速度差で縦に伸びる)
+      const a=Math.atan2(player.y-e.y,player.x-e.x);
+      for(let i=0;i<3;i++){
+        const v=sp+110+i*70;
+        eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,r:3,grazed:false,kind:'needle'});
+      }
+      e.fireT=0.75;
+    }
+  ],
+  // ---- M3 分光プリズム: 一つの光が三つに割れる ----
+  [
+    function(e,sp){ // 三重スパイラル
+      e.spin2=(e.spin2||0)+0.38;
+      for(let j=0;j<3;j++){
+        const a=e.spin2+j*TAU/3;
+        eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.62,vy:Math.sin(a)*sp*0.62,r:3.2,grazed:false});
+      }
+      e.fireT=0.09;
+    },
+    function(e,sp){ // 分光扇: 同じ角度に速度の違う三層。帯となって迫る
+      const a0=Math.atan2(player.y-e.y,player.x-e.x);
+      for(let i=-1;i<=1;i++){
+        const a=a0+i*0.26;
+        for(const vm of [0.7,0.95,1.25]){
+          eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*vm,vy:Math.sin(a)*sp*vm,r:3.5,grazed:false});
+        }
+      }
+      e.fireT=0.9;
+    },
+    function(e,sp){ // 屈折リング: 半位相ずれの二重輪が網目を編む
+      const k=13;
+      e.spin2=(e.spin2||0)+0.3;
+      for(let i=0;i<k;i++){
+        const a=e.spin2+i/k*TAU;
+        eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.5,vy:Math.sin(a)*sp*0.5,r:4.5,grazed:false});
+        eBullets.push({x:e.x,y:e.y,vx:Math.cos(a+Math.PI/k)*sp*0.78,vy:Math.sin(a+Math.PI/k)*sp*0.78,r:3,grazed:false});
+      }
+      e.fireT=1.25;
+    }
+  ],
+  // ---- M4 崩壊コア: 壊れかけの塊が、剥がれた断片を撃ち出す ----
+  [
+    function(e,sp){ // 断片射出: 公転している断片が順に自機へ飛ぶ
+      e.frag=(e.frag||0)+1;
+      const a0=e.spin*0.8+e.frag*TAU/4;
+      const fx=e.x+Math.cos(a0)*e.r*1.35, fy=e.y+Math.sin(a0)*e.r*1.35;
+      const a=Math.atan2(player.y-fy,player.x-fx);
+      eBullets.push({x:fx,y:fy,vx:Math.cos(a)*(sp+70),vy:Math.sin(a)*(sp+70),r:4,grazed:false,kind:'aim'});
+      eBullets.push({x:fx,y:fy,vx:Math.cos(a)*(sp+150),vy:Math.sin(a)*(sp+150),r:3,grazed:false,kind:'needle'});
+      e.fireT=0.42;
+    },
+    function(e,sp){ // 四重スパイラル(最高密度のグレイズ場)
+      e.spin2=(e.spin2||0)+0.31;
+      for(let j=0;j<4;j++){
+        const a=e.spin2+j*TAU/4;
+        eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.58,vy:Math.sin(a)*sp*0.58,r:3,grazed:false});
+      }
+      e.fireT=0.1;
+    },
+    function(e,sp){ // 崩落: 遅い大玉の輪と、その間を縫う小弾
+      const k=8;
+      e.spin2=(e.spin2||0)+0.35;
+      for(let i=0;i<k;i++){
+        const a=e.spin2+i/k*TAU;
+        eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.34,vy:Math.sin(a)*sp*0.34,r:9,grazed:false});
+        eBullets.push({x:e.x,y:e.y,vx:Math.cos(a+Math.PI/k)*sp*0.8,vy:Math.sin(a+Math.PI/k)*sp*0.8,r:3,grazed:false});
+      }
+      e.fireT=1.5;
+    }
+  ]
+];
+
 function midBossFire(e){
   const sp = 100 + e.stage*12;
-  if(e.mode===0){
-    // 回転スポーク(6本腕)
-    for(let j=0;j<6;j++){
-      const a=e.spin+j*TAU/6;
-      eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.75,vy:Math.sin(a)*sp*0.75,r:3.5,grazed:false,kind:'sq'});
-    }
-    e.fireT=0.12;
-  }else if(e.mode===1){
-    // 自機狙いの3-wayショットガン
-    const a0=Math.atan2(player.y-e.y,player.x-e.x);
-    for(let i=-1;i<=1;i++){
-      eBullets.push({x:e.x,y:e.y,vx:Math.cos(a0+i*0.2)*(sp+50),vy:Math.sin(a0+i*0.2)*(sp+50),r:4,grazed:false,kind:'aim'});
-    }
-    e.fireT=0.5;
-  }else{
-    // 拡散リング(隙間つき)
-    const k=14, gap=Math.floor(rnd(0,k));
-    for(let i=0;i<k;i++){
-      if(Math.abs(i-gap)<=1) continue;
-      const a=i/k*TAU+e.spin*0.3;
-      eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.6,vy:Math.sin(a)*sp*0.6,r:4,grazed:false});
-    }
-    e.fireT=0.9;
-  }
+  const set = MID_SETS[Math.min(e.mtype||0, MID_SETS.length-1)];
+  set[e.mode % set.length](e, sp);
 }
 
 function spawnMidBoss(){
   const stage=S.stage;
   // ザコより遥かに硬いが、本ボスのゲージは持たない関門
   const hp = 40 + stage*22;
+  const mtype = Math.min(stage-1, MID_SETS.length-1);
+  // 機体ごとの居座り方(滞空高度 / 横揺れの速さ・幅 / 自転)
+  const MOVE=[
+    {hy:0.20, sf:0.70, sa:0.30, sp:1.2},   // 監視ノード: 基準
+    {hy:0.17, sf:1.15, sa:0.34, sp:0.9},   // 双基ドローン: 速く広く滑る
+    {hy:0.15, sf:0.45, sa:0.20, sp:0.5},   // 走査ラティス: どっしり構える
+    {hy:0.22, sf:0.85, sa:0.32, sp:1.5},   // 分光プリズム: 揺れながら回る
+    {hy:0.19, sf:0.60, sa:0.26, sp:1.8}    // 崩壊コア: 重く、速く自転する
+  ][mtype];
   enemies.push({
     kind:'midboss', x:W/2, y:-70,
-    hp, maxHp:hp, r:30,
-    t:0, fireT:1.4, dead:false, stage,
-    spin:0, mode:0, modeT:0
+    hp, maxHp:hp, r: mtype===4 ? 34 : 30,
+    t:0, fireT:1.4, dead:false, stage, mtype,
+    hy:MOVE.hy, sf:MOVE.sf, sa:MOVE.sa, rot:MOVE.sp,
+    spin:0, mode:0, modeT:0, side:1
   });
   SFX.warn();
 }
@@ -1470,9 +1614,9 @@ function update(dt){
     }
     if(e.kind==='midboss'){
       // 左右に滑空しながら画面上部に居座る
-      e.y += (H*0.2 - e.y)*Math.min(dt*1.5,1);
-      e.x = W/2 + Math.sin(e.t*0.7)*(W*0.3);
-      e.spin += dt*1.2;
+      e.y += (H*(e.hy||0.2) - e.y)*Math.min(dt*1.5,1);
+      e.x = W/2 + Math.sin(e.t*(e.sf||0.7))*(W*(e.sa||0.3));
+      e.spin += dt*(e.rot||1.2);
       e.modeT -= dt;
       if(e.modeT<=0){ e.mode=(e.mode+1)%3; e.modeT=4.5; } // 3つの攻撃を巡回
       if(e.fireT<=0 && e.y>0){
@@ -1921,7 +2065,7 @@ function draw(){
     ctx.textBaseline='alphabetic';
   }
 
-  // ---- 中ボス: 監視ノード。外殻・砲塔・コアが別々にずれて回る ----
+  // ---- 中ボス: ステージごとに別の機体。共通の文法(押し出し+スライスずれ)で描く ----
   for(const e of enemies){
     if(e.kind!=='midboss') continue;
     const hpR=clamp(e.hp/e.maxHp,0,1);
@@ -1933,47 +2077,134 @@ function draw(){
     if(flash)    ampM=e.r*0.38;
     if(charging) ampM*=0.12;                       // 撃つ直前は像が揃う
     const mc = flash ? PAPER : '#8fdcff';
+    const CY = '0,229,255';
+    const mt = e.mtype||0;
     ctx.save();
     ctx.translate(e.x,e.y);
     ctx.shadowColor='#00e5ff'; ctx.shadowBlur=LOWFX?0:14;
-    // 外周: 逆回転する断片アーク
-    ctx.save(); ctx.rotate(-e.spin*0.6);
-    ctx.strokeStyle='rgba(0,229,255,0.45)'; ctx.lineWidth=2;
-    for(let i=0;i<4;i++){ const a0=i/4*TAU;
-      ctx.beginPath(); ctx.arc(0,0,e.r*1.28,a0,a0+0.85); ctx.stroke(); }
-    ctx.restore();
-    // 砲塔3基(点灯しているものが現在の攻撃)
-    ctx.save(); ctx.rotate(e.spin*0.5);
-    for(let i=0;i<3;i++){
-      ctx.save(); ctx.rotate(i/3*TAU); ctx.translate(0,-e.r*1.0);
-      const tur=()=>{ctx.beginPath();
-        ctx.moveTo(-5,-7);ctx.lineTo(5,-7);ctx.lineTo(7,6);ctx.lineTo(-7,6);ctx.closePath();};
-      extrude(tur,3,'0,229,255');
-      const on=(e.mode===i);
-      ctx.fillStyle= on ? (flash?PAPER:'rgba(191,240,255,0.85)') : 'rgba(0,229,255,0.16)';
-      tur(); ctx.fill();
-      ctx.strokeStyle=mc; ctx.lineWidth=1.6; tur(); ctx.stroke();
+    ctx.lineJoin='round'; ctx.lineCap='round';
+
+    if(mt===1){
+      // ===== M1 双基ドローン: 中央のレンズ体と、左右の副機 =====
+      const lens=()=>{ctx.beginPath();
+        ctx.moveTo(0,-e.r*0.62); ctx.lineTo(e.r*0.82,-e.r*0.20);
+        ctx.lineTo(e.r*0.82, e.r*0.20); ctx.lineTo(0, e.r*0.66);
+        ctx.lineTo(-e.r*0.82, e.r*0.20); ctx.lineTo(-e.r*0.82,-e.r*0.20); ctx.closePath();};
+      extrude(lens,5,CY);
+      drawSliced(lens,e.r*0.7,4,ampM,faceGrad(e.r*0.7,CY,0.42,0.10),mc,2.2,seedM);
+      for(const sd of [-1,1]){
+        ctx.strokeStyle=`rgba(${CY},0.45)`; ctx.lineWidth=3;
+        ctx.beginPath(); ctx.moveTo(sd*e.r*0.78,0); ctx.lineTo(sd*e.r*1.15,0); ctx.stroke();
+        ctx.save(); ctx.translate(sd*e.r*1.15,0); ctx.rotate(e.spin*0.7*sd);
+        const pod=()=>ngonPath(4,e.r*0.44,Math.PI/4);
+        extrude(pod,4,CY);
+        const on = (e.mode===0) ? (e.side===sd) : (e.mode===1);
+        ctx.fillStyle = on ? (flash?PAPER:'rgba(191,240,255,0.8)') : `rgba(${CY},0.16)`;
+        pod(); ctx.fill();
+        ctx.strokeStyle=mc; ctx.lineWidth=1.8; pod(); ctx.stroke();
+        ctx.restore();
+      }
+      glitchGhost(lens,e.r,(e.glOn>0||flash)?3:1.2,seedM);
+
+    }else if(mt===2){
+      // ===== M2 走査ラティス: 格子の枠を、走査線が上から舐めていく =====
+      const frame=()=>{ctx.beginPath(); ctx.rect(-e.r*1.05,-e.r*0.8,e.r*2.1,e.r*1.6);};
+      extrude(frame,5,CY);
+      drawSliced(frame,e.r,4,ampM,faceGrad(e.r,CY,0.38,0.09),mc,2.2,seedM);
+      ctx.save();
+      ctx.beginPath(); ctx.rect(-e.r*1.05,-e.r*0.8,e.r*2.1,e.r*1.6); ctx.clip();
+      ctx.shadowBlur=0;
+      ctx.strokeStyle=`rgba(${CY},0.32)`; ctx.lineWidth=1;
+      ctx.beginPath();
+      for(let k=1;k<5;k++){ const x=-e.r*1.05+k*e.r*0.42; ctx.moveTo(x,-e.r); ctx.lineTo(x,e.r); }
+      for(let k=1;k<4;k++){ const y=-e.r*0.8+k*e.r*0.4; ctx.moveTo(-e.r*1.1,y); ctx.lineTo(e.r*1.1,y); }
+      ctx.stroke();
+      const sy=-e.r*0.8 + ((e.t*70)%(e.r*1.6));    // 走査線
+      ctx.strokeStyle=charging?'rgba(255,255,255,0.9)':'rgba(191,240,255,0.7)';
+      ctx.lineWidth=2.4;
+      ctx.beginPath(); ctx.moveTo(-e.r*1.1,sy); ctx.lineTo(e.r*1.1,sy); ctx.stroke();
       ctx.restore();
+      // 四隅のノード
+      ctx.fillStyle=`rgba(${CY},0.85)`;
+      for(const cx2 of [-1,1]) for(const cy2 of [-1,1]){
+        ctx.fillRect(cx2*e.r*1.05-3, cy2*e.r*0.8-3, 6, 6);
+      }
+      glitchGhost(frame,e.r,(e.glOn>0||flash)?3:1.2,seedM);
+
+    }else if(mt===3){
+      // ===== M3 分光プリズム: 一つの光が三色に割れて出ていく =====
+      ctx.rotate(Math.sin(e.t*0.6)*0.26);
+      const pri=()=>{ctx.beginPath();
+        ctx.moveTo(0,-e.r*1.0); ctx.lineTo(e.r*0.94,e.r*0.64); ctx.lineTo(-e.r*0.94,e.r*0.64); ctx.closePath();};
+      extrude(pri,6,CY);
+      drawSliced(pri,e.r,4,ampM,faceGrad(e.r,CY,0.40,0.10),mc,2.4,seedM);
+      ctx.save(); ctx.shadowBlur=0; ctx.lineWidth=1.5;
+      ctx.strokeStyle='rgba(255,45,120,0.5)';
+      ctx.beginPath(); ctx.moveTo(-e.r*0.5,e.r*0.06); ctx.lineTo(e.r*0.58,e.r*0.46); ctx.stroke();
+      ctx.strokeStyle='rgba(120,240,255,0.6)';
+      ctx.beginPath(); ctx.moveTo(-e.r*0.5,e.r*0.06); ctx.lineTo(e.r*0.66,e.r*0.10); ctx.stroke();
+      ctx.strokeStyle='rgba(255,209,102,0.5)';
+      ctx.beginPath(); ctx.moveTo(-e.r*0.5,e.r*0.06); ctx.lineTo(e.r*0.52,-e.r*0.28); ctx.stroke();
+      ctx.restore();
+      glitchGhost(pri,e.r,(e.glOn>0||flash)?5:2.6,seedM);   // 分光体なので常に色が割れている
+
+    }else if(mt===4){
+      // ===== M4 崩壊コア: 外殻が三片に割れ、剥がれたまま回っている =====
+      ctx.save(); ctx.rotate(e.spin*0.3);
+      const core=()=>ngonPath(12,e.r,0);
+      extrude(core,6,CY);
+      drawSliced(core,e.r,5,ampM*1.4,faceGrad(e.r,CY,0.44,0.10),mc,2.2,seedM);
+      ctx.restore();
+      ctx.save(); ctx.shadowBlur=LOWFX?0:10;
+      for(let k=0;k<3;k++){
+        const a0=e.spin*0.8+k*TAU/3;
+        ctx.strokeStyle=`rgba(${CY},0.55)`; ctx.lineWidth=3.4;
+        ctx.beginPath(); ctx.arc(0,0,e.r*1.35+Math.sin(e.t*2+k)*3, a0, a0+0.8); ctx.stroke();
+        ctx.strokeStyle='rgba(232,236,242,0.25)'; ctx.lineWidth=1;
+        ctx.beginPath(); ctx.arc(0,0,e.r*1.35+Math.sin(e.t*2+k)*3+3, a0, a0+0.8); ctx.stroke();
+      }
+      ctx.restore();
+      glitchGhost(core,e.r,(e.glOn>0||flash)?5:2.2,seedM);
+
+    }else{
+      // ===== M0 監視ノード: 外殻・砲塔・コアが別々にずれて回る =====
+      ctx.save(); ctx.rotate(-e.spin*0.6);
+      ctx.strokeStyle=`rgba(${CY},0.45)`; ctx.lineWidth=2;
+      for(let k=0;k<4;k++){ const a0=k/4*TAU;
+        ctx.beginPath(); ctx.arc(0,0,e.r*1.28,a0,a0+0.85); ctx.stroke(); }
+      ctx.restore();
+      ctx.save(); ctx.rotate(e.spin*0.5);
+      for(let k=0;k<3;k++){
+        ctx.save(); ctx.rotate(k/3*TAU); ctx.translate(0,-e.r*1.0);
+        const tur=()=>{ctx.beginPath();
+          ctx.moveTo(-5,-7);ctx.lineTo(5,-7);ctx.lineTo(7,6);ctx.lineTo(-7,6);ctx.closePath();};
+        extrude(tur,3,CY);
+        const on=(e.mode===k);
+        ctx.fillStyle= on ? (flash?PAPER:'rgba(191,240,255,0.85)') : `rgba(${CY},0.16)`;
+        tur(); ctx.fill();
+        ctx.strokeStyle=mc; ctx.lineWidth=1.6; tur(); ctx.stroke();
+        ctx.restore();
+      }
+      ctx.restore();
+      const shell=()=>ngonPath(8,e.r,e.spin*0.2);
+      extrude(shell,5,CY);
+      drawSliced(shell,e.r,4,ampM,faceGrad(e.r,CY,0.42,0.10),mc,2.2,seedM);
+      glitchGhost(shell,e.r,(e.glOn>0||flash)?3:1.2,seedM);
+      ctx.save(); ctx.rotate(-e.spin);
+      ctx.strokeStyle=flash?PAPER:`rgba(${CY},0.65)`; ctx.lineWidth=1.4;
+      ngonPath(6,e.r*0.5,0); ctx.stroke();
+      ctx.restore();
+      scanLines(e.r*0.9,5,0.05,e.t*22);
     }
-    ctx.restore();
-    // 八角の装甲コア
-    const shell=()=>ngonPath(8,e.r,e.spin*0.2);
-    extrude(shell,5,'0,229,255');
-    drawSliced(shell,e.r,4,ampM,faceGrad(e.r,'0,229,255',0.42,0.10),mc,2.2,seedM);
-    glitchGhost(shell,e.r,(e.glOn>0||flash)?3:1.2,seedM);
-    // 内部の逆回転リング
-    ctx.save(); ctx.rotate(-e.spin);
-    ctx.strokeStyle=flash?PAPER:'rgba(0,229,255,0.65)'; ctx.lineWidth=1.4;
-    ngonPath(6,e.r*0.5,0); ctx.stroke();
-    ctx.restore();
-    scanLines(e.r*0.9,5,0.05,e.t*22);
-    // 中央アイ
+
+    // 中央アイ(発射直前に白熱): どの機体にも共通の「撃つ合図」
     ctx.fillStyle=charging?PAPER:'#00e5ff';
     ctx.shadowBlur=LOWFX?0:16;
     ctx.beginPath(); ctx.arc(0,0,e.r*0.19,0,TAU); ctx.fill();
     ctx.shadowBlur=0;
-    shards(10, e.r*1.55, '0,229,255', -e.spin*0.8, 3, seedM);
+    shards(mt===4?16:10, e.r*1.6, CY, -e.spin*0.8, mt===4?4:3, seedM);
     ctx.restore();
+
     // HPバー
     const bwM=90;
     ctx.fillStyle='rgba(255,255,255,0.1)';
