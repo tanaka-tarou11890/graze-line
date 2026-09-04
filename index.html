@@ -221,7 +221,7 @@
   </div>
   <div class="side-foot">
     <div class="side-keys">ドラッグで移動 ／ SPACE・X で BREAK ／ ESC でポーズ</div>
-    <div class="side-build">BUILD 2026-09-03 v4</div>
+    <div class="side-build">BUILD 2026-09-04 v4.2</div>
   </div>
 </aside>
 
@@ -265,7 +265,7 @@
   </div>
   <button class="start-btn" id="startBtn">START</button>
   <button id="devBtn">DEV MODE ▸</button>
-  <div style="margin-top:14px;font-size:8px;letter-spacing:.3em;color:#3a4156">BUILD 2026-09-03 v4</div>
+  <div style="margin-top:14px;font-size:8px;letter-spacing:.3em;color:#3a4156">BUILD 2026-09-04 v4.2</div>
 </div>
 
 <div id="devHud" class="hidden">
@@ -302,7 +302,7 @@
 <button id="muteBtn">SOUND ON</button>
 
 <script>
-console.log('GRAZE//LINE build 2026-09-03 v4 (6 stages + endurance / PC side panel / dimensional / data-entity enemies / 5 midbosses)');
+console.log('GRAZE//LINE build 2026-09-04 v4.2 (6 stages + endurance + boss mutate + break drops / PC side panel / dimensional / data-entity enemies / 5 midbosses)');
 (() => {
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
@@ -777,7 +777,9 @@ function spawnEnemy(){
   else if(r<(acc+=mineP)) kind='mine';
   // 出現方向: STAGE 2から左右、STAGE 3から真下が解禁
   const sideP   = stage>=2 ? Math.min(0.22 + (stage-2)*0.04, 0.34) : 0;
-  const bottomP = stage>=3 ? Math.min(0.12 + (stage-3)*0.04, 0.20) : 0;
+  // 下から来る敵は自機のすぐ側に湧いて避けにくいので、出現率を従来の約7割に抑える
+  // (実際の出現率はさらに、分裂型・機雷が上からに固定される分だけ下がる)
+  const bottomP = stage>=3 ? Math.min(0.09 + (stage-3)*0.02, 0.15) : 0;
   let edge='top';
   const roll=Math.random();
   if(roll < bottomP) edge='bottom';
@@ -793,8 +795,12 @@ function spawnEnemy(){
     e.x=rnd(40,W-40); e.y=-rnd(30,90);
     e.vy = rnd(30,50) + hard*26;
   }else if(edge==='bottom'){
-    e.x=rnd(40,W-40); e.y=H+rnd(30,90);
-    e.vy = -(rnd(36,56) + hard*30); // 下からせり上がる
+    // 自機の真下は避けて湧かせる(反応する余地を残す)
+    let bx=rnd(40,W-40);
+    for(let tryN=0; tryN<6 && Math.abs(bx-player.x)<110; tryN++) bx=rnd(40,W-40);
+    e.x=bx; e.y=H+rnd(30,90);
+    e.vy = -(rnd(36,56) + hard*26); // 下からせり上がる
+    e.fireT = rnd(1.6,2.6);         // 湧いた瞬間には撃たない
   }else{
     e.baseY = rnd(H*0.12, H*0.5);
     e.y = e.baseY;
@@ -813,34 +819,40 @@ function spawnEnemy(){
 function enemyFire(e){
   const stage = (e.stage||1);
   const hard = Math.min(0.45 + (stage-1)*0.22, stage>=6 ? 1.6 : 1.4);
-  const sp = 95 + hard*95;
+  // 下から来た敵は自機との距離が近く、避ける余地が乏しい。
+  // せり上がって画面に入り切るまでは撃たせず、撃つときも手数を一段落とす。
+  const low = e.edge==='bottom';
+  if(low && e.y > H*0.78){ e.fireT=0.35; return; }
+  const sp = (95 + hard*95) * (low ? 0.85 : 1);
   if(e.kind==='drift'){
-    // 中弾の3-way → 後半は5-wayファン
-    const fan = hard>0.8 ? 2 : 1;
+    // 中弾の3-way → 後半は5-wayファン(下からの敵は3-wayに留める)
+    const fan = (hard>0.8 && !low) ? 2 : 1;
     for(let i=-fan;i<=fan;i++){
       const a = Math.PI/2 + i*0.32;
       eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,r:4.5,grazed:false});
     }
   }else if(e.kind==='aimer'){
     const a = Math.atan2(player.y-e.y, player.x-e.x);
-    const n = 2 + (hard>0.7?1:0);
+    const n = 2 + ((hard>0.7 && !low) ? 1 : 0);
     for(let i=0;i<n;i++){
       eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*(sp+40+i*55),vy:Math.sin(a)*(sp+40+i*55),r:4,grazed:false,kind:'aim'});
     }
-    if(hard>0.89){ // STAGE 3〜: 高速の針弾を一刺し追加
+    if(hard>0.89 && !low){ // STAGE 3〜: 高速の針弾を一刺し追加
       eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*(sp+180),vy:Math.sin(a)*(sp+180),r:3,grazed:false,kind:'needle'});
     }
   }else if(e.kind==='spinner'){
-
-    // スピナー: 一定速で回転する規則格子のリング
+    // スピナー: 規則格子のリング。ただし必ず2発ぶんの抜け道が開いており、
+    // その穴は撃つたびに一つずつ回っていく(見ていれば必ず通れる)
     const k = 8 + Math.floor(hard*5);
     e.spin = (e.spin||0) + 0.35;
-    const off = e.spin;
+    e.gapI = ((e.gapI||0) + 1) % k;
+    const off = e.spin, g1=e.gapI, g2=(e.gapI+1)%k;
     for(let i=0;i<k;i++){
+      if(i===g1 || i===g2) continue;
       const a = off + i/k*TAU;
       eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.8,vy:Math.sin(a)*sp*0.8,r:3.2,grazed:false,kind:'sq'});
     }
-    if(hard>0.6){ // STAGE 2〜: ゆっくり迫る大弾(左右交互の規則的なズレ)
+    if(hard>0.6 && !low){ // STAGE 2〜: ゆっくり迫る大弾(左右交互の規則的なズレ)
       e.orbSide = (e.orbSide||1) * -1;
       const a = Math.atan2(player.y-e.y, player.x-e.x) + e.orbSide*0.18;
       eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.45,vy:Math.sin(a)*sp*0.45,r:10,grazed:false});
@@ -861,9 +873,11 @@ function enemyFire(e){
 // ---- ボス弾幕パターンライブラリ ----
 // lv = ボス番号(0始まり)。周回するほど密度・速度が上がる
 const P = {
-  ring(e,sp,lv){ // 回転リング
+  ring(e,sp,lv){ // 回転リング(抜け道が2発ぶん開き、ゆっくり回る)
     const k=14+Math.min(lv,4)*2, off=e.t*0.7;
+    const g1=Math.floor(e.t*0.9)%k, g2=(g1+1)%k;
     for(let i=0;i<k;i++){
+      if(i===g1 || i===g2) continue;
       const a=off+i/k*TAU;
       eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.75,vy:Math.sin(a)*sp*0.75,r:4.5,grazed:false});
     }
@@ -1203,12 +1217,45 @@ function endEndure(e){
   S.score+=gain;
   popup(W/2, H*0.3, 'SURVIVED +'+gain, GOLD);
   burst(e.x,e.y,GOLD,36,300);
-  if(S.bombs<3){ S.bombs++; popup(W/2, H*0.3+26, 'BREAK +1', CYAN); }
+  dropBreak(e.x, e.y+30);
   S.shake=12; SFX.boss(); e.fireT=1.6;
 }
 
+// ===== 変異(MUTATE): 残りHPが1/3を切ると、覚えた弾幕が通用しなくなる =====
+// 新しい型を足すのではなく、既存の型の「並び」と「角度」を崩す。
+// 弾幕そのものの構造は保たれるので、初見でも読めるが、暗記した安全地帯は流れていく。
+const MUT_AT    = 1/3;    // 変異する残HPの割合
+const MUT_TOUGH = 0.65;   // 変異後の被ダメージ倍率(ゲージの減りが遅くなる)
+const MUT_DUR   = 4.5;    // 変異後のパターン切替間隔(通常は6秒)
+const MUT_PREC  = 0.55;   // 歳差の速さ(rad/秒)
+
+function shuffledSeq(n){
+  const a=[]; for(let i=0;i<n;i++) a.push(i);
+  for(let i=n-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const w=a[i]; a[i]=a[j]; a[j]=w; }
+  return a;
+}
+// 本体まわりから湧いた弾だけを、ゆっくり歳差する角度ぶん回す。
+// ・自機狙い弾(オレンジ)は回さない —「オレンジは必ず自機を狙う」という約束を壊さないため
+// ・画面上端から降る型(壁・天柱)も回さない — 横から飛んでくる不自然な弾になるため
+function mutateVolley(e, from){
+  if(!e.mutated) return;
+  const off = e.mutOff + rnd(-0.04,0.04);
+  const ca=Math.cos(off), sa=Math.sin(off), rr=(e.r*1.8)*(e.r*1.8);
+  for(let i=from;i<eBullets.length;i++){
+    const b=eBullets[i];
+    if(b.kind==='aim' || b.kind==='needle') continue;
+    const dx=b.x-e.x, dy=b.y-e.y;
+    if(dx*dx+dy*dy > rr) continue;
+    b.x = e.x + dx*ca - dy*sa;
+    b.y = e.y + dx*sa + dy*ca;
+    const vx=b.vx, vy=b.vy;
+    b.vx = vx*ca - vy*sa;
+    b.vy = vx*sa + vy*ca;
+  }
+}
+
 function bossFire(e){
-  const lv = (e.stage||1)-1; // 0〜4
+  const lv = (e.stage||1)-1; // 0〜5
   // 怒り(rage): 残ゲージが減るほど 0→1 で上昇し、弾速・連射・密度に乗る
   const rem = Math.ceil(e.hp/(e.perBar||e.maxHp));
   e.rage = (e.bossBars>1) ? (e.bossBars-rem)/(e.bossBars-1) : 0;
@@ -1216,13 +1263,22 @@ function bossFire(e){
   const sp = (110 + Math.min(0.5+lv*0.2, 1.4)*70) * (1 + e.rage*0.22);
   // 各ボスは自分の形に特化した固有セットを使う(再来したボスも自分の弾幕を持ち込む)
   const set = BOSS_SETS[Math.min(e.bossType||0, BOSS_SETS.length-1)];
-  const phase = Math.floor(e.t/6)%set.length; // 6秒ごとにパターン切替
-  if(phase!==e.lastPhase){
-    e.lastPhase=phase;
-    e.fireT=1.2; // パターン転換の小休止(立て直しのチャンス)
+  const dur = e.mutated ? MUT_DUR : 6;
+  const slot = Math.floor(e.t/dur);
+  if(e.mutated && (!e.mutSeq || e.mutSeq.length!==set.length)) e.mutSeq=shuffledSeq(set.length);
+  const phase = e.mutated ? e.mutSeq[slot % set.length] : (slot % set.length);
+  if(slot!==e.lastSlot){
+    e.lastSlot=slot;
+    e.fireT = e.mutated ? 0.9 : 1.2;   // パターン転換の小休止(立て直しのチャンス)
+    if(e.mutated){
+      e.mutDir = -e.mutDir;                                        // 歳差の向きが反転する
+      if(slot % set.length === 0) e.mutSeq = shuffledSeq(set.length); // 一巡ごとに並べ替え
+    }
     return;
   }
+  const from = eBullets.length;
   set[phase](e, sp, lv);
+  mutateVolley(e, from);
   e.fireT *= (1 - e.rage*0.25);  // ゲージが減るほど連射が加速
   if(e.purged) e.fireT*=0.9;     // 変身ボーナスはrageと重なるため緩和
 }
@@ -1313,7 +1369,7 @@ function rematchDown(e){
   burst(e.x,e.y,GOLD,18,200);
   eBullets.length=0; lasers.length=0;
   items.push({x:e.x,y:e.y,vy:55,t:0});
-  if(S.bombs<3){ S.bombs++; popup(e.x,e.y+24,'BREAK +1',CYAN); }
+  dropBreak(e.x-26, e.y);
   S.waveRestT=1.6;
 }
 
@@ -1323,14 +1379,11 @@ function bossDown(e){
   const gain=Math.round(2000*S.mult);
   S.score+=gain;
   popup(e.x,e.y,'+'+gain+' BOSS',GOLD);
-  if(S.bombs<3){
-    S.bombs++;
-    popup(e.x,e.y+24,'BREAK +1',CYAN);
-  }
   burst(e.x,e.y,MAGENTA,40,320);
   burst(e.x,e.y,GOLD,24,220);
   eBullets.length=0; lasers.length=0; // 撃破で全弾・レーザー消去
-  items.push({x:e.x,y:e.y,vy:55,t:0}); // 確定ドロップ
+  items.push({x:e.x,y:e.y,vy:55,t:0}); // ホーミング(確定ドロップ)
+  dropBreak(e.x-26, e.y);              // BREAKアイテム(確定ドロップ)
   // ステージ進行
   S.stage++;
   S.stageWave=0;
@@ -1340,6 +1393,12 @@ function bossDown(e){
   }else{
     popup(W/2, H*0.35, 'STAGE '+S.stage, CYAN);
   }
+}
+
+// BREAKアイテム: 中ボス・ボスを倒すと落ちる。取ればBREAKが1つ増える。
+// 取り逃すと損が大きいので、近づくと自機へ吸い寄せられる。
+function dropBreak(x,y){
+  items.push({x, y, vy:42, t:0, type:'break'});
 }
 
 // ---------- fx ----------
@@ -1741,13 +1800,31 @@ function update(dt){
     it.t+=dt;
     it.y+=it.vy*dt;
     it.x+=Math.sin(it.t*2.4)*22*dt;
-    const dx=it.x-player.x,dy=it.y-player.y;
-    if(dx*dx+dy*dy < 24*24){
+    let dx=it.x-player.x, dy=it.y-player.y;
+    if(it.type==='break'){
+      // 取り逃すと痛いので、一定距離まで来たら自機へ吸い寄せる
+      const d=Math.hypot(dx,dy)||1;
+      if(d<170){ it.x-=dx/d*140*dt; it.y-=dy/d*140*dt; dx=it.x-player.x; dy=it.y-player.y; }
+    }
+    const pr = it.type==='break' ? 30 : 24;
+    if(dx*dx+dy*dy < pr*pr){
       it.dead=true;
-      S.homingT=Math.min(S.homingT+8,16);
       SFX.item();
-      popup(player.x,player.y-40,'HOMING +8s',GOLD);
-      burst(player.x,player.y,GOLD,12,140);
+      if(it.type==='break'){
+        if(S.bombs<3){
+          S.bombs++;
+          popup(player.x,player.y-40,'BREAK +1',CYAN);
+        }else{
+          const g=Math.round(1200*S.mult);
+          S.score+=g;
+          popup(player.x,player.y-40,'+'+g,GOLD);   // 満タンならスコアに変わる
+        }
+        burst(player.x,player.y,CYAN,12,140);
+      }else{
+        S.homingT=Math.min(S.homingT+8,16);
+        popup(player.x,player.y-40,'HOMING +8s',GOLD);
+        burst(player.x,player.y,GOLD,12,140);
+      }
     }
     if(it.y>H+20)it.dead=true;
   }
@@ -1802,7 +1879,8 @@ function update(dt){
             burst(e.x,e.y,'#8fd6ff',26,260);
             burst(e.x,e.y,PAPER,14,200);
             eBullets.length=0; lasers.length=0; // 撃破で弾消去のご褒美
-            items.push({x:e.x,y:e.y,vy:55,t:0}); // 確定ドロップ
+            items.push({x:e.x,y:e.y,vy:55,t:0}); // ホーミング(確定ドロップ)
+            dropBreak(e.x-26, e.y);              // BREAKアイテム(確定ドロップ)
             S.shake=Math.max(S.shake,8);
             SFX.boss();
           }
@@ -1834,6 +1912,16 @@ function update(dt){
         e.endureT-=dt;
         if(e.endureT<=0) endEndure(e);
       }
+      // 残りHPが1/3を切ると変異: 弾幕の並びと角度が崩れ、同時に装甲が硬化する
+      if(!e.mutated && e.hp>0 && e.hp<=e.maxHp*MUT_AT && !(e.endureT>0)){
+        e.mutated=true; e.tough=MUT_TOUGH;
+        e.mutOff=0; e.mutDir=1; e.mutSeq=null;
+        e.fireT=Math.max(e.fireT,0.9);
+        S.shake=Math.max(S.shake,9);
+        burst(e.x,e.y,CYAN,22,240);
+        popup(e.x,e.y-64,'MUTATE',CYAN);
+      }
+      if(e.mutated) e.mutOff += dt*e.mutDir*MUT_PREC;   // 安全地帯がゆっくり流れていく
       // 外殻パージ: 最終ボスだけは耐久を耐え切った時点で行う
       if(!e.purged && e.hp<=e.maxHp*0.5 && e.bossType!==5){
         e.purged=true;
@@ -1879,7 +1967,8 @@ function update(dt){
           ? Math.max(rnd(2.4,3.2) - (st-1)*0.2, 1.4)
           : e.kind==='split' ? rnd(2.0,2.8)
           : e.kind==='splitkid' ? rnd(1.4,2.2)
-          : Math.max(rnd(1.0,1.8) - (st-1)*0.12, 0.5)) * ease;
+          : Math.max(rnd(1.0,1.8) - (st-1)*0.12, 0.62)) * ease   // 下限を上げて観察の間を作る
+          * (e.edge==='bottom' ? 1.25 : 1);                       // 下からの敵はさらに間隔を空ける
       }
     }
     // collide with player bullets(耐久中の本体は無敵で、弾はすり抜ける)
@@ -1887,7 +1976,7 @@ function update(dt){
       if(b.dead)continue;
       const dx=e.x-b.x,dy=e.y-b.y;
       if(dx*dx+dy*dy < (e.r+b.r)*(e.r+b.r)){
-        b.dead=true; e.hp--; e.hitT=0.07;
+        b.dead=true; e.hp -= (e.tough||1); e.hitT=0.07;
         particles.push({x:b.x,y:b.y,vx:rnd(-40,40),vy:rnd(-80,-20),life:.2,max:.2,color:PAPER});
         if(e.hp<=0){
           e.dead=true;
@@ -2225,24 +2314,27 @@ function draw(){
     else         blitSprite(shotSprite(), b.x, b.y);
   }
 
-  // items (ホーミングアイテム)
+  // items (金の六角=ホーミング / 青の菱形=BREAK)
   for(const it of items){
+    const isB = it.type==='break';
+    const col = isB ? CYAN : GOLD;
+    const rgb = isB ? '0,229,255' : '255,209,102';
     ctx.save();
     ctx.translate(it.x,it.y);
     ctx.rotate(it.t*1.6);
-    const hexi=()=>ngonPath(6,11,0);
-    extrude(hexi,3,'255,209,102');
-    ctx.fillStyle=faceGrad(11,'255,209,102',0.55,0.14);
-    hexi(); ctx.fill();
-    ctx.strokeStyle=GOLD; ctx.lineWidth=1.6;
-    ctx.shadowColor=GOLD; ctx.shadowBlur=LOWFX?0:(10+Math.sin(it.t*6)*4);
-    hexi(); ctx.stroke();
+    const shape = isB ? (()=>ngonPath(4,13,0)) : (()=>ngonPath(6,11,0));
+    extrude(shape,3,rgb);
+    ctx.fillStyle=faceGrad(isB?13:11,rgb,0.55,0.14);
+    shape(); ctx.fill();
+    ctx.strokeStyle=col; ctx.lineWidth=1.6;
+    ctx.shadowColor=col; ctx.shadowBlur=LOWFX?0:(10+Math.sin(it.t*6)*4);
+    shape(); ctx.stroke();
     ctx.rotate(-it.t*1.6);
     ctx.shadowBlur=0;
-    ctx.fillStyle=GOLD;
+    ctx.fillStyle=col;
     ctx.font='700 10px "Avenir Next","Helvetica Neue",sans-serif';
     ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText('H',0,1);
+    ctx.fillText(isB?'B':'H',0,1);
     ctx.restore();
     ctx.textBaseline='alphabetic';
   }
@@ -2434,6 +2526,7 @@ function draw(){
       let ampB=e.r*0.09*(1+rage*0.7);
       if(e.glOn>0) ampB=e.r*0.24;
       if(flash)    ampB=e.r*0.30;
+      if(e.mutated) ampB*=1.5;                 // 変異体は像の崩れが大きい
       if(charging) ampB*=0.12;                    // 発射直前に像が結ぶ
       ctx.scale(breath,breath);
       ctx.shadowBlur=LOWFX?0:(20+rage*12);
@@ -2456,6 +2549,10 @@ function draw(){
       if(enr){
         ctx.strokeStyle='rgba(232,236,242,0.16)'; ctx.lineWidth=1;
         ctx.beginPath(); ctx.arc(0,0,e.r*(1.3+Math.sin(e.t*5)*0.06),0,TAU); ctx.stroke();
+      }
+      if(e.mutated){                            // 変異の証: 脈打つ環
+        ctx.strokeStyle='rgba(0,229,255,0.32)'; ctx.lineWidth=1.8;
+        ctx.beginPath(); ctx.arc(0,0,e.r*(1.14+Math.sin(e.t*3.4)*0.05),0,TAU); ctx.stroke();
       }
       ctx.restore();
       ctx.lineWidth=2.2;
@@ -2692,14 +2789,15 @@ function draw(){
       const ratio=clamp(inBar/perBar,0,1);
       ctx.fillStyle='rgba(255,255,255,0.1)';
       ctx.fillRect(e.x-bw/2, e.y-e.r-18, bw, 4);
-      ctx.fillStyle=cs.st;
-      ctx.shadowColor=cs.st;ctx.shadowBlur=LOWFX?0:8;
+      const gcol = e.mutated ? GOLD : cs.st;   // 硬化中はゲージが金色に変わる
+      ctx.fillStyle=gcol;
+      ctx.shadowColor=gcol;ctx.shadowBlur=LOWFX?0:8;
       ctx.fillRect(e.x-bw/2, e.y-e.r-18, bw*ratio, 4);
       ctx.shadowBlur=0;
       ctx.fillStyle=PAPER;
       ctx.font='700 11px "Avenir Next","Helvetica Neue",sans-serif';
       ctx.textAlign='left';
-      ctx.fillText('×'+remBars, e.x+bw/2+7, e.y-e.r-12);
+      ctx.fillText('×'+remBars+(e.mutated?' ▲':''), e.x+bw/2+7, e.y-e.r-12);
       ctx.textAlign='center';
       continue;
     }
