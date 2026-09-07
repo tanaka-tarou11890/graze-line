@@ -57,6 +57,10 @@
   #lives{font-size:16px;letter-spacing:.35em;color:var(--magenta);text-shadow:0 0 10px rgba(255,45,120,.5)}
   #wave{font-size:11px;color:#7d879e;letter-spacing:.2em}
   #homingHud{font-size:10px;letter-spacing:.25em;color:var(--gold);margin-top:2px;min-height:13px}
+  #powerHud{font-size:10px;letter-spacing:.22em;color:var(--cyan);margin-top:3px;
+    text-shadow:0 0 8px rgba(0,229,255,.4);transition:color .15s}
+  #powerHud.max{color:var(--paper);text-shadow:0 0 10px rgba(255,255,255,.5)}
+  #powerHud.down{color:var(--magenta);text-shadow:0 0 10px rgba(255,45,120,.5)}
   /* graze gauge: 彫り込んだ溝に光を流す */
   #gaugeWrap{position:absolute;left:50%;transform:translateX(-50%);
     bottom:calc(30px + env(safe-area-inset-bottom));
@@ -88,6 +92,10 @@
     box-shadow:0 3px 8px rgba(0,0,0,.6),inset 0 3px 12px rgba(0,0,0,.6);
     background:radial-gradient(circle at 34% 26%,rgba(0,229,255,.5),rgba(0,58,78,.3) 60%,rgba(4,8,16,.6))}
   #burstBtn.empty{opacity:.28;border-color:var(--dim);color:var(--dim);box-shadow:none}
+  #burstBtn.locked{opacity:.55;border-color:var(--magenta);color:var(--magenta);
+    background:radial-gradient(circle at 34% 26%,rgba(255,45,120,.16),rgba(4,8,16,.6));
+    box-shadow:0 0 16px rgba(255,45,120,.18)}
+  #burstBtn.locked:active{transform:none}
   @media (hover:hover) and (pointer:fine){
     #burstBtn{width:auto;height:auto;border-radius:3px;padding:10px 18px;
       bottom:calc(16px + env(safe-area-inset-bottom));right:16px}
@@ -139,6 +147,22 @@
     border:1px dashed var(--dim);background:transparent;color:var(--dim);
     font-size:9px;letter-spacing:.35em;cursor:pointer;font-family:inherit}
   #devBtn:hover{color:#9aa3b8;border-color:#9aa3b8}
+  /* ---------- 開発者用パネル(URLに #dev を付けるか、タイトルで dev と打つと出る) ---------- */
+  #devPanel{pointer-events:auto;margin-top:14px;padding:14px 16px;
+    border:1px dashed var(--dim);max-width:min(480px,92vw);
+    display:flex;flex-direction:column;gap:9px;align-items:stretch;
+    background:rgba(10,16,28,.6)}
+  .dev-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .dev-cap{font-size:8px;letter-spacing:.3em;color:var(--dim);width:52px;flex:none}
+  #devStages button,#devPoints button,.dev-opt{
+    font-family:inherit;font-size:10px;letter-spacing:.12em;cursor:pointer;
+    padding:6px 9px;margin-right:5px;
+    border:1px solid var(--dim);background:transparent;color:#9aa3b8}
+  #devStages button.on,#devPoints button.on,.dev-opt.on{
+    border-color:var(--cyan);color:var(--cyan);background:rgba(0,229,255,.10)}
+  #devStages button:disabled,#devPoints button:disabled{opacity:.25;cursor:default}
+  #devPanel .start-btn{margin-top:4px;padding:11px 0;font-size:11px}
+  .dev-note{font-size:8px;letter-spacing:.2em;color:var(--dim);text-align:center}
   #devHud{position:fixed;top:calc(58px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:5;
     display:flex;gap:12px;align-items:center;pointer-events:none;
     font-size:9px;letter-spacing:.2em;color:#9aa3b8;font-family:inherit}
@@ -221,7 +245,7 @@
   </div>
   <div class="side-foot">
     <div class="side-keys">ドラッグで移動 ／ SPACE・X で BREAK ／ ESC でポーズ</div>
-    <div class="side-build">BUILD 2026-09-04 v4.2</div>
+    <div class="side-build">BUILD 2026-09-07 v4.5</div>
   </div>
 </aside>
 
@@ -236,6 +260,7 @@
     <div class="hud-block right">
       <div class="hud-label">MULTIPLIER</div>
       <div id="mult">×1.0</div>
+      <div id="powerHud">POWER ▮▯▯▯</div>
       <div id="lives">◆◆◆</div>
       <div id="homingHud"></div>
     </div>
@@ -259,18 +284,31 @@
     敵は<b>崩れた像</b>で漂い、<b>撃つ直前に像が揃う</b>。揃ったら来る。<br>
     全<b>6ステージ</b>。道中に<span class="mg">中ボス</span>、最深部に<span class="mg">ボス</span>。<br>
     最終ステージには<span style="color:var(--gold)">耐久弾幕</span>——倒せない相手を60秒間、避け切る。<br>
+    その60秒だけは <b>BREAK が封鎖</b>される。逃げ道はない。<br>
+    倍率が上がると<b>ショットの段位</b>も上がる。被弾しても段位は<b>1段しか落ちない</b>ので、立て直せる。<br>
     追い詰められたら <b>BREAK</b>（Space / X / 右下のボタン / 二本目の指でタップ）。<br>
     金の<span style="color:var(--gold)">「H」</span>で<span style="color:var(--gold)">追尾弾</span>が8秒。
     <span class="mg">50,000 / 200,000 / 500,000 / 1,000,000</span> 点で残機+1。
   </div>
   <button class="start-btn" id="startBtn">START</button>
-  <button id="devBtn">DEV MODE ▸</button>
-  <div style="margin-top:14px;font-size:8px;letter-spacing:.3em;color:#3a4156">BUILD 2026-09-04 v4.2</div>
+  <button id="devBtn" class="hidden">DEV MODE ▸</button>
+  <div id="devPanel" class="hidden">
+    <div class="dev-row"><span class="dev-cap">STAGE</span><span id="devStages"></span></div>
+    <div class="dev-row"><span class="dev-cap">START</span><span id="devPoints"></span></div>
+    <div class="dev-row"><span class="dev-cap">OPTION</span>
+      <button class="dev-opt on" data-opt="god">無敵</button>
+      <button class="dev-opt" data-opt="auto">自動操縦</button>
+      <button class="dev-opt on" data-opt="pow">最大POWER</button>
+    </div>
+    <button class="start-btn sub" id="devGo">DEV START</button>
+    <div class="dev-note">DEVプレイの記録はハイスコアに残りません</div>
+  </div>
+  <div style="margin-top:14px;font-size:8px;letter-spacing:.3em;color:#3a4156">BUILD 2026-09-07 v4.5</div>
 </div>
 
 <div id="devHud" class="hidden">
   <span class="dev-badge">DEV</span>
-  <span id="devKeys">N: 次ウェーブ / M: 中ボス / B: 次ボス / F: 倍速 / ESC: ポーズ</span>
+  <span id="devKeys">N: 次ウェーブ / M: 中ボス / B: 次ボス / H: HP1/3 / K: 撃破 / F: 倍速 / ESC: ポーズ</span>
   <span id="devFf" class="hidden">×3 FAST</span>
 </div>
 
@@ -284,6 +322,7 @@
     <div>GRAZE<b id="finalGraze">0</b></div>
   </div>
   <div class="best hidden" id="bestTag">NEW RECORD</div>
+  <div class="best hidden" id="devRunNote" style="color:var(--dim)">DEV RUN — 記録対象外</div>
   <div class="btn-row">
     <button class="start-btn" id="retryBtn">RETRY</button>
     <button class="start-btn sub" id="titleBtn">TITLE</button>
@@ -302,7 +341,7 @@
 <button id="muteBtn">SOUND ON</button>
 
 <script>
-console.log('GRAZE//LINE build 2026-09-04 v4.2 (6 stages + endurance + boss mutate + break drops / PC side panel / dimensional / data-entity enemies / 5 midbosses)');
+console.log('GRAZE//LINE build 2026-09-07 v4.5 (hidden dev stage select / break locked during endurance / power tiers + 6 stages + endurance / PC side panel / dimensional / data-entity enemies / 5 midbosses)');
 (() => {
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
@@ -459,6 +498,9 @@ const ENDURE_SEC=60;                 // 最終ボスの耐久弾幕の長さ(秒
 
 function reset(){
   S.t=0;S.score=0;S.mult=1;S.maxMult=1;S.grazeCount=0;S.gauge=0;
+  S.power=0;S.powerFlash=0;S.maxPower=0;S.endureLock=false;
+  // DEV関連は毎回falseに戻す。プレイヤーの通常プレイに設定が漏れないようにする。
+  S.dev=false;S.godMode=false;S.ffwd=false;S.pendingEndure=false;
   S.lives=3;S.wave=0;S.waveT=0;S.shake=0;S.inv=0;S.grazeFlash=0;
   S.slowT=0;S.calmT=0;S.bossActive=false;S.homingT=0;
   S.spawnQueue=0;S.squadNum=0;S.squadBeat=0;S.squadTimeout=0;S.extendIdx=0;
@@ -751,6 +793,7 @@ function spawnBossNow(){
     return;
   }
   const hp = def.bossBars * perBar;
+  const spawnedAt = enemies.length;
   enemies.push({
     kind:'boss', x:W/2, y:-80,
     hp, maxHp: hp, perBar, bossBars: def.bossBars,
@@ -758,6 +801,11 @@ function spawnBossNow(){
     t:0, fireT:1.2, dead:false,
     stage, bossType: Math.min(stage-1, BOSS_NAMES.length-1), purged:false
   });
+  if(S.pendingEndure){                 // DEV: 耐久弾幕の直前まで削った状態で始める
+    const b=enemies[spawnedAt];
+    b.hp=Math.floor(b.maxHp*0.5)+1;
+    S.pendingEndure=false;
+  }
 }
 
 function spawnEnemy(){
@@ -1205,12 +1253,15 @@ function endureFire(e){
 }
 function startEndure(e){
   e.endureT=ENDURE_SEC; e.endIdx=-1; e.invul=true;
+  S.endureLock=true;                      // 耐久中はBREAKを封鎖する
   eBullets.length=0; lasers.length=0;
   S.shake=12; SFX.warn();
   popup(W/2, H*0.3, 'ENDURE '+ENDURE_SEC+'s', GOLD);
+  popup(W/2, H*0.3+28, 'BREAK 封鎖', MAGENTA);
 }
 function endEndure(e){
   e.endureT=0; e.endured=true; e.invul=false;
+  S.endureLock=false;
   e.purged=true;                          // 耐え切った直後に外殻パージ(最終形態へ)
   eBullets.length=0; lasers.length=0;
   const gain=Math.round(5000*S.mult);
@@ -1331,6 +1382,39 @@ function fireLaser(x,y,angle,w,opt){
   });
 }
 
+// ===== 火力(POWER)と得点倍率(MULT)の分離 =====
+// 倍率は被弾で×1.0に戻る(得点上の罰)。火力は段位として残り、被弾では1段しか落ちない。
+// これがないと、被弾した瞬間にDPSが 58.8 → 9.1 まで落ち、そのまま連続被弾する悪循環になる。
+const POWER_TIERS=[
+  {spread:0, rate:0.11 , at:0   },   // 0: 1発
+  {spread:1, rate:0.11 , at:2.5 },   // 1: 3発
+  {spread:1, rate:0.085, at:4   },   // 2: 3発・連射up
+  {spread:2, rate:0.085, at:6   }    // 3: 5発・連射up
+];
+const POWER_MAX=POWER_TIERS.length-1;
+function tierFromMult(m){
+  let k=0;
+  for(let i=0;i<POWER_TIERS.length;i++) if(m>=POWER_TIERS[i].at) k=i;
+  return k;
+}
+// 倍率が伸びたぶんだけ段位も上がる(下がるのは被弾のときだけ)
+function syncPower(){
+  const tgt=tierFromMult(S.mult);
+  if(tgt>S.power){
+    S.power=tgt;
+    S.maxPower=Math.max(S.maxPower,S.power);
+    S.powerFlash=0.6;
+    popup(player.x, player.y-62, 'POWER '+(S.power+1), CYAN);
+  }
+}
+function dropPower(){
+  if(S.power>0){
+    S.power--;
+    S.powerFlash=-0.8;                 // 負の値は「落ちた」表示
+    popup(player.x, player.y-62, 'POWER DOWN', MAGENTA);
+  }
+}
+
 function doGraze(px,py){
   S.grazeCount++;
   S.grazeFlash=0.22;
@@ -1340,6 +1424,7 @@ function doGraze(px,py){
     S.gauge=0;
     S.mult = Math.min(S.mult+0.5, 8);
     S.maxMult=Math.max(S.maxMult,S.mult);
+    syncPower();
     SFX.multUp();
     popup(player.x, player.y-44, '×'+S.mult.toFixed(1), GOLD);
     burst(player.x,player.y,GOLD,10,120);
@@ -1375,6 +1460,7 @@ function rematchDown(e){
 
 function bossDown(e){
   SFX.boss();
+  S.endureLock=false;      // 念のため: 耐久中に本体が消えた場合でも封鎖を残さない
   S.bossActive=false; S.calmT=3; S.shake=12;
   const gain=Math.round(2000*S.mult);
   S.score+=gain;
@@ -1752,11 +1838,12 @@ function update(dt){
 
   // auto fire
   player.fireT-=dt;
-  const rate = S.mult>=4 ? 0.085 : 0.11; // 本編と同一のレート
+  const tier = POWER_TIERS[clamp(S.power,0,POWER_MAX)];
+  const rate = tier.rate;
   if(player.fireT<=0){
     player.fireT=rate;
     SFX.shot();
-    const spread = S.mult>=6 ? 2 : S.mult>=2.5 ? 1 : 0;
+    const spread = tier.spread;
     for(let i=-spread;i<=spread;i++){
       bullets.push({x:player.x+i*7,y:player.y-10,vx:i*36,vy:-620,r:3});
     }
@@ -1771,6 +1858,8 @@ function update(dt){
     }
   }
   if(S.homingT>0)S.homingT-=dt;
+  if(S.powerFlash>0) S.powerFlash=Math.max(0,S.powerFlash-dt);
+  else if(S.powerFlash<0) S.powerFlash=Math.min(0,S.powerFlash+dt);
 
   // player bullets (追尾弾は最寄りの敵へ旋回)
   for(const b of bullets){
@@ -2102,10 +2191,18 @@ function update(dt){
 
 function doBurst(){
   if(!S.running || S.paused || S.hitStop>0) return;
-  if(!S.dev){
+  // 耐久弾幕の最中はBREAKを封鎖する。逃げ道があると、耐える場面が資源管理に変わってしまうため。
+  // 誤爆で在庫を失わないよう、発動そのものを止めて残数は減らさない。
+  if(S.endureLock){
+    SFX.hit();
+    popup(player.x, player.y-50, 'BREAK 封鎖', MAGENTA);
+    S.shake=Math.max(S.shake,5);
+    return;
+  }
+  if(!S.godMode){
     if(S.bombs<=0) return;
     S.bombs--;
-  } // DEVモードはBREAK無限
+  } // 無敵オプション中はBREAK無限
   SFX.burst();
   // 画面上の敵弾を全てスコアに変換して消去
   let gain=0;
@@ -2125,9 +2222,10 @@ function doBurst(){
 
 function hitPlayer(){
   SFX.hit();
-  if(!S.dev) S.lives--; // DEVモードは不死身
+  if(!S.godMode) S.lives--; // 無敵オプション中は減らない
   S.inv=1.6; S.shake=10; S.hitStop=0.09;
   S.mult=1; S.gauge=0;
+  dropPower();          // 火力は全損せず1段だけ落ちる
   burst(player.x,player.y,PAPER,30,260);
   // 周囲の弾を消す(救済)
   eBullets=eBullets.filter(b=>{
@@ -3015,7 +3113,8 @@ const elScore=document.getElementById('score'),
       elGauge=document.getElementById('gauge'),
       elBombs=document.getElementById('bombs'),
       elBurstBtn=document.getElementById('burstBtn'),
-      elHoming=document.getElementById('homingHud');
+      elHoming=document.getElementById('homingHud'),
+      elPower=document.getElementById('powerHud');
 elBurstBtn.addEventListener('pointerdown',e=>{e.stopPropagation();doBurst();});
 function updateHUD(){
   elScore.textContent=S.score.toLocaleString();
@@ -3025,8 +3124,15 @@ function updateHUD(){
   elGauge.classList.toggle('hot',S.gauge>0.7);
   elLives.textContent='◆'.repeat(Math.max(S.lives,0))+'◇'.repeat(Math.max(3-S.lives,0));
   elBombs.textContent='▲'.repeat(S.bombs)+'△'.repeat(Math.max(3-S.bombs,0));
-  elBurstBtn.classList.toggle('empty',S.bombs<=0);
+  elBurstBtn.classList.toggle('empty',S.bombs<=0 && !S.endureLock);
+  elBurstBtn.classList.toggle('locked',!!S.endureLock);
+  elBurstBtn.textContent = S.endureLock ? 'LOCKED' : 'BREAK';
   elHoming.textContent = S.homingT>0 ? 'HOMING '+Math.ceil(S.homingT)+'s' : '';
+  const pw=clamp(S.power,0,POWER_MAX);
+  let bar=''; for(let i=0;i<=POWER_MAX;i++) bar += (i<=pw ? '▮' : '▯');
+  elPower.textContent='POWER '+bar;
+  elPower.classList.toggle('max', pw>=POWER_MAX);
+  elPower.classList.toggle('down', S.powerFlash<0);
 }
 
 // ---------- loop ----------
@@ -3108,23 +3214,44 @@ function demoStart(){
   S.running=true;
 }
 
-function devStart(){
+// 開発者用の開始。opts で「どこから・どう」始めるかを選ぶ。
+function devStart(opts){
+  const o = opts || {};
   reset();
-  S.demo=true; S.dev=true; S.paused=false; S.ffwd=false;
+  S.dev=true; S.paused=false; S.ffwd=false;
+  S.demo    = !!o.auto;      // 自動操縦(従来のデモ観戦)。falseなら自分で操作できる
+  S.godMode = o.god!==false; // 無敵とBREAK無限
   titleScreen.classList.add('hidden');
   overScreen.classList.add('hidden');
   pauseScreen.classList.add('hidden');
   hud.classList.remove('hidden');
   devHud.classList.remove('hidden');
   devFf.classList.add('hidden');
+  document.body.classList.toggle('playing', !S.demo);
   S.running=true;
+  if(o.pow){ S.mult=8; S.maxMult=8; syncPower(); }
+  if(o.stage) devJump(o.stage, o.point||'wave');
+}
+
+// 指定ステージの指定地点へ飛ぶ
+function devJump(stage, point){
+  S.stage=clamp(stage,1,STAGE_DEF.length);
+  const def=STAGE_DEF[S.stage-1];
+  const mids=Array.isArray(def.midAt)?def.midAt:[def.midAt];
+  devClearField();
+  if(point==='mid1')        S.stageWave=mids[0]-1;
+  else if(point==='mid2')   S.stageWave=(mids[1]||mids[0])-1;
+  else if(point==='boss')   S.stageWave=def.waves-1;
+  else if(point==='endure'){ S.stageWave=def.waves-1; S.pendingEndure=true; }
+  else                      S.stageWave=0;
+  spawnWave(); S.waveT=30;
 }
 
 // DEV用: 場をリセットして指定の進行へ飛ぶ
 function devClearField(){
   enemies.length=0; eBullets.length=0; items.length=0; markers.length=0; lasers.length=0;
   S.spawnQueue=0; S.bossActive=false; S.calmT=0; S.bossWarnT=0; S.waveRestT=0;
-  S.rematchType=null;
+  S.rematchType=null; S.endureLock=false;
 }
 function devNextWave(){
   devClearField();
@@ -3149,7 +3276,8 @@ function showResult(stageLabel){
   document.getElementById('finalMult').textContent='×'+S.maxMult.toFixed(1);
   document.getElementById('finalGraze').textContent=S.grazeCount;
   const tag=document.getElementById('bestTag');
-  if(S.score>best){
+  document.getElementById('devRunNote').classList.toggle('hidden', !S.dev);
+  if(!S.dev && S.score>best){       // DEVプレイの記録は残さない
     best=S.score;
     try{ localStorage.setItem('grazeline_best', String(best)); }catch(e){}
     tag.classList.remove('hidden');
@@ -3181,7 +3309,80 @@ function gameClear(){
   showResult('ALL');
 }
 document.getElementById('startBtn').addEventListener('click',start);
-document.getElementById('devBtn').addEventListener('click',devStart);
+// ---------- 開発者用の入口 ----------
+// プレイヤーには見せない。URLに #dev を付けるか、タイトル画面で dev と打つと現れる。
+const devBtn=document.getElementById('devBtn');
+const devPanel=document.getElementById('devPanel');
+let devUnlocked=false;
+function unlockDev(){
+  if(devUnlocked) return;
+  devUnlocked=true;
+  devBtn.classList.remove('hidden');
+}
+const devLoc = (window.location || {hash:'',search:''});
+if(/dev/i.test(devLoc.hash||'') || /dev/i.test(devLoc.search||'')) unlockDev();
+let devTyped='';
+window.addEventListener('keydown',e=>{
+  if(devUnlocked || titleScreen.classList.contains('hidden')) return;
+  if(!/^Key[A-Z]$/.test(e.code)) return;
+  devTyped=(devTyped+e.code.slice(3)).slice(-3);
+  if(devTyped==='DEV') unlockDev();
+});
+devBtn.addEventListener('click',()=>devPanel.classList.toggle('hidden'));
+
+// ---------- ステージセレクト ----------
+const devSel={stage:1, point:'wave', god:true, auto:false, pow:true};
+const DEV_POINTS=[
+  {id:'wave',   label:'道中'},
+  {id:'mid1',   label:'中ボス①'},
+  {id:'mid2',   label:'中ボス②'},
+  {id:'boss',   label:'ボス'},
+  {id:'endure', label:'耐久直前'}
+];
+const devStagesEl=document.getElementById('devStages');
+const devPointsEl=document.getElementById('devPoints');
+function buildDevPanel(){
+  devStagesEl.innerHTML='';
+  for(let s=1;s<=STAGE_DEF.length;s++){
+    const b=document.createElement('button');
+    b.textContent=s;
+    b.className = (s===devSel.stage)?'on':'';
+    b.addEventListener('click',()=>{ devSel.stage=s; fixPoint(); buildDevPanel(); });
+    devStagesEl.appendChild(b);
+  }
+  const def=STAGE_DEF[devSel.stage-1];
+  const mids=Array.isArray(def.midAt)?def.midAt:[def.midAt];
+  devPointsEl.innerHTML='';
+  for(const p of DEV_POINTS){
+    const avail = p.id==='mid2'   ? mids.length>1
+                : p.id==='endure' ? devSel.stage===STAGE_DEF.length
+                : true;
+    const b=document.createElement('button');
+    b.textContent=p.label;
+    b.disabled=!avail;
+    b.className = (p.id===devSel.point && avail)?'on':'';
+    if(avail) b.addEventListener('click',()=>{ devSel.point=p.id; buildDevPanel(); });
+    devPointsEl.appendChild(b);
+  }
+}
+function fixPoint(){   // ステージを変えて選べない地点になったら道中へ戻す
+  const def=STAGE_DEF[devSel.stage-1];
+  const mids=Array.isArray(def.midAt)?def.midAt:[def.midAt];
+  if(devSel.point==='mid2' && mids.length<2) devSel.point='wave';
+  if(devSel.point==='endure' && devSel.stage!==STAGE_DEF.length) devSel.point='wave';
+}
+for(const b of document.querySelectorAll('.dev-opt')){
+  b.addEventListener('click',()=>{
+    const k=b.dataset.opt;
+    devSel[k]=!devSel[k];
+    b.classList.toggle('on',devSel[k]);
+  });
+}
+document.getElementById('devGo').addEventListener('click',()=>{
+  devPanel.classList.add('hidden');
+  devStart(devSel);
+});
+buildDevPanel();
 document.getElementById('retryBtn').addEventListener('click',start);
 document.getElementById('titleBtn').addEventListener('click',goTitle);
 document.getElementById('pauseBtn').addEventListener('pointerdown',e=>{e.stopPropagation();pauseGame();});
@@ -3209,6 +3410,14 @@ window.addEventListener('keydown',e=>{
     if(e.code==='KeyF'){
       S.ffwd=!S.ffwd;
       devFf.classList.toggle('hidden',!S.ffwd);
+    }
+    if(e.code==='KeyH'){                 // 変異(1/3)まで一気に削る
+      const b=enemies.find(x=>x.kind==='boss'||x.kind==='midboss');
+      if(b) b.hp=Math.max(1,Math.floor(b.maxHp/3));
+    }
+    if(e.code==='KeyK'){                 // 目の前のボス/中ボスを即撃破
+      const b=enemies.find(x=>x.kind==='boss'||x.kind==='midboss');
+      if(b) b.hp=1;
     }
   }
 });
