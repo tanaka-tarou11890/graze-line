@@ -56,7 +56,6 @@
   #mult.hot{color:var(--gold);text-shadow:0 0 14px rgba(255,209,102,.6),0 2px 0 rgba(0,0,0,.7)}
   #lives{font-size:16px;letter-spacing:.35em;color:var(--magenta);text-shadow:0 0 10px rgba(255,45,120,.5)}
   #wave{font-size:11px;color:#7d879e;letter-spacing:.2em}
-  #homingHud{font-size:10px;letter-spacing:.25em;color:var(--gold);margin-top:2px;min-height:13px}
   #powerHud{font-size:10px;letter-spacing:.22em;color:var(--cyan);margin-top:3px;
     text-shadow:0 0 8px rgba(0,229,255,.4);transition:color .15s}
   #powerHud.max{color:var(--paper);text-shadow:0 0 10px rgba(255,255,255,.5)}
@@ -245,7 +244,7 @@
   </div>
   <div class="side-foot">
     <div class="side-keys">ドラッグで移動 ／ SPACE・X で BREAK ／ ESC でポーズ</div>
-    <div class="side-build">BUILD 2026-09-07 v4.5</div>
+    <div class="side-build">BUILD 2026-09-09 v5.3</div>
   </div>
 </aside>
 
@@ -262,7 +261,6 @@
       <div id="mult">×1.0</div>
       <div id="powerHud">POWER ▮▯▯▯</div>
       <div id="lives">◆◆◆</div>
-      <div id="homingHud"></div>
     </div>
   </div>
   <div id="gaugeLabel">GRAZE</div>
@@ -284,10 +282,10 @@
     敵は<b>崩れた像</b>で漂い、<b>撃つ直前に像が揃う</b>。揃ったら来る。<br>
     全<b>6ステージ</b>。道中に<span class="mg">中ボス</span>、最深部に<span class="mg">ボス</span>。<br>
     最終ステージには<span style="color:var(--gold)">耐久弾幕</span>——倒せない相手を60秒間、避け切る。<br>
-    その60秒だけは <b>BREAK が封鎖</b>される。逃げ道はない。<br>
-    倍率が上がると<b>ショットの段位</b>も上がる。被弾しても段位は<b>1段しか落ちない</b>ので、立て直せる。<br>
+    その60秒だけは <b>ショットも BREAK も封じられる</b>。避けることしかできない。<br>
+    かすり続けると<b>ショットが1本→2本→3本</b>と増える。被弾しても<b>1段だけ</b>落ち、その1段ぶんを取り返せば戻る。<br>
     追い詰められたら <b>BREAK</b>（Space / X / 右下のボタン / 二本目の指でタップ）。<br>
-    金の<span style="color:var(--gold)">「H」</span>で<span style="color:var(--gold)">追尾弾</span>が8秒。
+    <span style="color:var(--gold)">追尾弾</span>は最初から装備。金の<span style="color:var(--gold)">星</span>は得点——倍率が高いほど、<b>画面の上で拾うほど</b>大きい。
     <span class="mg">50,000 / 200,000 / 500,000 / 1,000,000</span> 点で残機+1。
   </div>
   <button class="start-btn" id="startBtn">START</button>
@@ -303,7 +301,7 @@
     <button class="start-btn sub" id="devGo">DEV START</button>
     <div class="dev-note">DEVプレイの記録はハイスコアに残りません</div>
   </div>
-  <div style="margin-top:14px;font-size:8px;letter-spacing:.3em;color:#3a4156">BUILD 2026-09-07 v4.5</div>
+  <div style="margin-top:14px;font-size:8px;letter-spacing:.3em;color:#3a4156">BUILD 2026-09-09 v5.3</div>
 </div>
 
 <div id="devHud" class="hidden">
@@ -341,7 +339,7 @@
 <button id="muteBtn">SOUND ON</button>
 
 <script>
-console.log('GRAZE//LINE build 2026-09-07 v4.5 (hidden dev stage select / break locked during endurance / power tiers + 6 stages + endurance / PC side panel / dimensional / data-entity enemies / 5 midbosses)');
+console.log('GRAZE//LINE build 2026-09-09 v5.3 (point items replace homing boost / stage-scaled density / endurance spirals / shots disabled during endurance / permanent homing / 1-2-3 shot tiers / thicker enemies / hidden dev stage select / break locked during endurance / power tiers + 6 stages + endurance / PC side panel / dimensional / data-entity enemies / 5 midbosses)');
 (() => {
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
@@ -498,11 +496,11 @@ const ENDURE_SEC=60;                 // 最終ボスの耐久弾幕の長さ(秒
 
 function reset(){
   S.t=0;S.score=0;S.mult=1;S.maxMult=1;S.grazeCount=0;S.gauge=0;
-  S.power=0;S.powerFlash=0;S.maxPower=0;S.endureLock=false;
+  S.power=0;S.pg=0;S.powerFlash=0;S.maxPower=0;S.endureLock=false;
   // DEV関連は毎回falseに戻す。プレイヤーの通常プレイに設定が漏れないようにする。
   S.dev=false;S.godMode=false;S.ffwd=false;S.pendingEndure=false;
   S.lives=3;S.wave=0;S.waveT=0;S.shake=0;S.inv=0;S.grazeFlash=0;
-  S.slowT=0;S.calmT=0;S.bossActive=false;S.homingT=0;
+  S.slowT=0;S.calmT=0;S.bossActive=false;
   S.spawnQueue=0;S.squadNum=0;S.squadBeat=0;S.squadTimeout=0;S.extendIdx=0;
   S.waveRestT=0;S.bossWarnT=0;S.rematchType=null;
   S.stage=1;S.stageWave=0;S.waveIntensity=1;S.cleared=false;
@@ -777,7 +775,7 @@ function spawnMidBoss(){
 function spawnBossNow(){
   const stage = S.stage;
   const def = STAGE_DEF[stage-1];
-  const perBar = 80 + stage*15;          // ゲージ1本あたりのHP
+  const perBar = Math.round((80 + stage*15) * 1.25);   // ゲージ1本あたりのHP(v4.6で25%増)
   if(S.rematchType!=null){
     // 中ボス枠での再来: 本人の弾幕はそのまま、ゲージ本数を絞って関門の長さにする
     const bt=S.rematchType;
@@ -835,7 +833,9 @@ function spawnEnemy(){
   if(kind==='split'||kind==='mine') edge='top'; // 特殊敵は上からのみ
 
   const e = {
-    hp: 3 + (stage-1)*2,
+    // 常時ホーミングにより道中の実効火力が実測で約2.6倍になったため、耐久をその分厚くする
+    // (旧: 3,5,7,9,11,13 → 新: 8,13,18,24,29,34)
+    hp: Math.round(8 + (stage-1)*5.2),
     r: 14, t: rnd(0,TAU), fireT: rnd(0.5,1.8),
     kind, vy:0, vx:0, baseX:0, baseY:0, dead:false, stage, edge
   };
@@ -873,15 +873,15 @@ function enemyFire(e){
   if(low && e.y > H*0.78){ e.fireT=0.35; return; }
   const sp = (95 + hard*95) * (low ? 0.85 : 1);
   if(e.kind==='drift'){
-    // 中弾の3-way → 後半は5-wayファン(下からの敵は3-wayに留める)
-    const fan = (hard>0.8 && !low) ? 2 : 1;
+    // 中弾の3-way → 5-way → 終盤は7-way(下からの敵は3-wayに留める)
+    const fan = low ? 1 : (hard>1.25 ? 3 : hard>0.8 ? 2 : 1);
     for(let i=-fan;i<=fan;i++){
       const a = Math.PI/2 + i*0.32;
       eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,r:4.5,grazed:false});
     }
   }else if(e.kind==='aimer'){
     const a = Math.atan2(player.y-e.y, player.x-e.x);
-    const n = 2 + ((hard>0.7 && !low) ? 1 : 0);
+    const n = low ? 2 : (2 + (hard>0.7?1:0) + (hard>1.3?1:0));
     for(let i=0;i<n;i++){
       eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*(sp+40+i*55),vy:Math.sin(a)*(sp+40+i*55),r:4,grazed:false,kind:'aim'});
     }
@@ -891,7 +891,7 @@ function enemyFire(e){
   }else if(e.kind==='spinner'){
     // スピナー: 規則格子のリング。ただし必ず2発ぶんの抜け道が開いており、
     // その穴は撃つたびに一つずつ回っていく(見ていれば必ず通れる)
-    const k = 8 + Math.floor(hard*5);
+    const k = 8 + Math.floor(hard*7);
     e.spin = (e.spin||0) + 0.35;
     e.gapI = ((e.gapI||0) + 1) % k;
     const off = e.spin, g1=e.gapI, g2=(e.gapI+1)%k;
@@ -922,7 +922,7 @@ function enemyFire(e){
 // lv = ボス番号(0始まり)。周回するほど密度・速度が上がる
 const P = {
   ring(e,sp,lv){ // 回転リング(抜け道が2発ぶん開き、ゆっくり回る)
-    const k=14+Math.min(lv,4)*2, off=e.t*0.7;
+    const k=Math.round((14+Math.min(lv,5)*2)*(e.dz||1)), off=e.t*0.7;
     const g1=Math.floor(e.t*0.9)%k, g2=(g1+1)%k;
     for(let i=0;i<k;i++){
       if(i===g1 || i===g2) continue;
@@ -949,7 +949,7 @@ const P = {
     e.fireT=Math.max(0.085-lv*0.004,0.06);
   },
   wall(e,sp,lv){ // 弾のカーテン: 隙間がサインカーブで左右に揺れる(軌道を読んで潜る)
-    const cols=13+Math.min(lv,4)*2;
+    const cols=Math.round((13+Math.min(lv,5)*2)*(e.dz||1));
     const gap=Math.floor((0.5+0.4*Math.sin(e.t*0.9))*(cols-4))+2;
     for(let i=0;i<cols;i++){
       if(Math.abs(i-gap)<=1) continue; // 隙間
@@ -975,7 +975,8 @@ const P = {
     e.fireT=0.08;
   },
   flower(e,sp,lv){ // 花弁状リング: 一定角ずつ回転しながら二層に開く
-    const k=12+Math.min(lv,4)*2;
+    // 二層が交互に並ぶ形なので、弾数は必ず偶数に揃える
+    const k=Math.round((12+Math.min(lv,5)*2)*(e.dz||1)/2)*2;
     e.spin=(e.spin||0)+0.45;
     const off=e.spin;
     for(let i=0;i<k;i++){
@@ -990,7 +991,7 @@ const P = {
   },
   rain(e,sp,lv){ // スイープシャワー: 噴射方向が左右へ規則的に往復
     const a0=Math.PI/2 + Math.sin(e.t*2.6)*0.85;
-    const n=2+Math.min(lv,3);
+    const n=Math.round((2+Math.min(lv,3))*(e.dz||1));
     for(let i=0;i<n;i++){
       const a=a0+(i-(n-1)/2)*0.12;
       eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.8,vy:Math.sin(a)*sp*0.8,r:3,grazed:false});
@@ -1004,6 +1005,30 @@ const P = {
       eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*sp*0.6,vy:Math.sin(a)*sp*0.6,r:3,grazed:false});
     }
     e.fireT=Math.max(0.13-lv*0.005,0.09);
+  },
+  spiralArm(e,sp,lv){ // 螺旋の腕: 耐久弾幕と同じ文法を通常戦にも持ち込む
+    e.sa=(e.sa||0)+0.17;
+    const arms=2+Math.min(Math.floor(lv/2),2);
+    for(let k=0;k<arms;k++){
+      const a=e.sa+k/arms*TAU;
+      eBullets.push({x:e.x+Math.cos(a)*e.r*0.9, y:e.y+Math.sin(a)*e.r*0.9,
+        vx:Math.cos(a)*sp*0.60, vy:Math.sin(a)*sp*0.60,
+        r:4, grazed:false, hue:(k%2===0)?'mag':'vio'});
+    }
+    e.fireT=0.07;
+  },
+  spiralTwin(e,sp,lv){ // 逆回転の二重螺旋: 桃とすみれが交差して格子状の通り道を作る
+    e.sa=(e.sa||0)+0.15;
+    e.sb=(e.sb||0)-0.15;
+    const arms=2+(lv>=4?1:0);
+    for(let k=0;k<arms;k++){
+      const a1=e.sa+k/arms*TAU, a2=e.sb+k/arms*TAU+Math.PI/arms;
+      eBullets.push({x:e.x+Math.cos(a1)*e.r*0.9, y:e.y+Math.sin(a1)*e.r*0.9,
+        vx:Math.cos(a1)*sp*0.58, vy:Math.sin(a1)*sp*0.58, r:4, grazed:false, hue:'mag'});
+      eBullets.push({x:e.x+Math.cos(a2)*e.r*0.9, y:e.y+Math.sin(a2)*e.r*0.9,
+        vx:Math.cos(a2)*sp*0.58, vy:Math.sin(a2)*sp*0.58, r:4, grazed:false, hue:'vio'});
+    }
+    e.fireT=0.09;
   }
 };
 P.laserAim = function(e,sp,lv){
@@ -1042,7 +1067,8 @@ P.wingBeat = function(e,sp,lv){ // 羽ばたき: 左右対称の翼弧が波の�
 P.featherV = function(e,sp,lv){ // 風切のV編隊: 渡り鳥の隊列が自機へ滑空
   const a0=Math.atan2(player.y-e.y,player.x-e.x);
   const ca=Math.cos(a0), sa=Math.sin(a0);
-  for(let i=0;i<=3;i++){
+  const rows=3+Math.round(Math.max(0,(e.dz||1)-1)*2);
+  for(let i=0;i<=rows;i++){
     for(const sd of (i===0?[0]:[-1,1])){
       const back=i*16, lat=sd*i*11;
       eBullets.push({
@@ -1065,10 +1091,12 @@ P.talons = function(e,sp,lv){ // 爪撃: 両翼端からの2条が自機の位�
 // --- BOSS II: 人型 ---
 P.twinSpiral = function(e,sp,lv){ // 双掌の鏡映スパイラル: 干渉してレース模様を編む
   e.spin=(e.spin||0)+0.34;
+  // 濃いステージでは腕が2本から3本に増える
+  const offs=(e.dz||1)>1.2 ? [0, TAU/3, TAU*2/3] : [0, Math.PI];
   for(const sd of [-1,1]){
     const ox=sd*e.r*0.95, oy=e.r*0.12;
     const a=sd*e.spin;
-    for(const off of [0,Math.PI]){
+    for(const off of offs){
       eBullets.push({x:e.x+ox,y:e.y+oy,vx:Math.cos(a+off)*sp*0.6,vy:Math.sin(a+off)*sp*0.6,r:3,grazed:false});
     }
   }
@@ -1098,7 +1126,7 @@ P.palmLasers = function(e,sp,lv){ // 双掌レーザー: 両掌から自機の�
 P.clubSweep = function(e,sp,lv){ // 金棒の薙ぎ: 速度勾配の弾列が1本の棒となって振り抜く
   e.club=(e.club||0)+0.15;
   const a=Math.PI/2 + Math.sin(e.club)*1.05;
-  const seg=7+((e.rage||0)>0.6?2:0); // 怒りで棒が伸びる
+  const seg=7+((e.rage||0)>0.6?2:0)+Math.round(Math.max(0,(e.dz||1)-1)*3); // 怒りと密度で棒が伸びる
   for(let i=0;i<seg;i++){
     const v=sp*(0.45+i*0.13); // 同角度・速度勾配 → 伸びる棒
     eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,r:i===seg-1?6:3.5,grazed:false,kind:i%2?'sq':undefined});
@@ -1147,7 +1175,7 @@ P.pentagram = function(e,sp,lv){ // 五芒星: 星の辺上に配した弾が形
 P.batWave = function(e,sp,lv){ // 蝙蝠の群れ: 翼下から小さな編隊が波状に押し寄せる
   e.bw=(e.bw||0)+1;
   const a0=Math.PI/2 + Math.sin(e.bw*0.7)*0.5;
-  const bn=3+((e.rage||0)>0.5?1:0);
+  const bn=3+((e.rage||0)>0.5?1:0)+Math.round(Math.max(0,(e.dz||1)-1)*2);
   for(const sd of [-1,1]){
     for(let i=0;i<bn;i++){
       const a=a0+sd*(0.12+i*0.06);
@@ -1213,6 +1241,7 @@ P.dragonBreath = function(e,sp,lv){ // ブレス: 頭の向きから薙ぎ払う
   e.br=(e.br||0)+0.32;
   const a=Math.PI/2 + dir*0.3 + Math.sin(e.br)*0.55;
   const bvms=(e.rage||0)>0.5 ? [0.8,1.0,1.2,1.4] : [0.8,1.0,1.2];
+  if((e.dz||1)>1.3) bvms.push(0.62);   // 濃いステージでは帯がもう一層厚くなる
   for(const vm of bvms){ // 速度差で帯に厚みが出る
     eBullets.push({x:hx,y:hy,vx:Math.cos(a)*sp*0.7*vm,vy:Math.sin(a)*sp*0.7*vm,r:3,grazed:false});
   }
@@ -1235,29 +1264,110 @@ const BOSS_SETS=[
   [P.wingBeat,    P.featherV,    P.talons],                                  // I:   鷲 — 翼と編隊と爪
   [P.twinSpiral,  P.palmLasers,  P.palmPulse,    P.burst3],                  // II:  人型 — 双掌の武術
   [P.clubSweep,   P.flower,      P.laserFan,     P.oniStomp],                // III: 鬼 — 金棒と曼荼羅
-  [P.pentagram,   P.batWave,     P.crossLasers,  P.spiral4],                 // IV:  悪魔 — 魔法陣と群れ
-  [P.serpentWave, P.pearls,      P.dragonBreath, P.heavenPillars, P.ring],   // V:   連環体 — 波と珠と天柱
-  // VI: 終端コア — 歴代で最も苛烈な型を並べた最終セット
-  [P.spiral4,     P.crossLasers, P.serpentWave,  P.heavenPillars, P.pearls]
+  [P.pentagram,   P.batWave,     P.crossLasers,  P.spiral4,     P.spiralArm], // IV:  悪魔 — 魔法陣と群れ
+  [P.serpentWave, P.pearls,      P.dragonBreath, P.heavenPillars, P.ring,
+   P.spiralArm],                                                              // V:   連環体 — 波と珠と天柱
+  // VI: 終端コア — 歴代で最も苛烈な型。レーザーの合間を弾幕で埋める
+  [P.spiral4,     P.spiralArm,   P.crossLasers,  P.serpentWave,
+   P.flower,      P.spiralTwin,  P.heavenPillars, P.pearls,   P.ring]
 ];
 
 // ===== 耐久弾幕: 本体は無敵になり中央へ。ひたすら避け続ける ENDURE_SEC 秒 =====
-// 10秒ごとに型が替わる。狙い撃ちではなく、読める幾何の弾幕で構成する。
-const ENDURE_SEQ=[P.spiral2, P.ring, P.rain, P.flower, P.pentagram, P.spiral4];
+// 前半30秒は読みやすい型で足慣らし。後半30秒は「充填リング」に切り替わり、
+// 10秒ごとに厳しくなる。
+// 螺旋の腕: 中心から高速で撃ち続け、発射角をわずかずつ回すことで
+// 弾が連なった曲線になる。腕と腕の間が通り道になる。
+// 2色に塗り分けると、どの腕が自分に迫っているのかを追いやすい。
+// 60秒すべてを螺旋で通すため、回り方の型を3つ用意して交互に置く。
+//   spin … 一定の向きに巻き続け、一定周期で反転する(基本形)
+//   wave … 巻く向きが滑らかに揺れ、腕がS字にうねる
+//   twin … 桃とすみれが逆向きに回り、腕が格子状に交差する
+// 腕を増やすときは1本あたりの発射間隔も広げ、1秒あたりの総弾数を抑える
+// (38 → 43 → 67 → 65 → 77 → 103 発/秒)。難しさは腕の数と巻きの強さで上げる。
+const ENDURE_ARMS=[
+  // arms:腕の本数 / step:発射間隔 / dAng:1発ごとに回す角度 / v:弾速
+  // flip:回転が反転する周期 / waveHz:うねりの速さ / drift:うねりに乗せる一定の巻き
+  // vAmp:弾速の脈動 / aimT:自機狙いを挟む間隔 / aimN:その本数
+  {mode:'spin', arms:2, step:0.052, dAng:0.070, v:108, br:4.4, flip:6.0, aimT:2.8, aimN:2},
+  {mode:'wave', arms:2, step:0.046, dAng:0.150, waveHz:0.22, drift:0.030, v:116, br:4.3, aimT:2.4, aimN:2},
+  {mode:'twin', arms:2, step:0.060, dAng:0.090, v:122, br:4.2, flip:7.0, aimT:2.1, aimN:2},
+  {mode:'spin', arms:3, step:0.046, dAng:0.112, v:130, br:4.1, flip:4.0, aimT:1.8, aimN:3},
+  {mode:'wave', arms:4, step:0.052, dAng:0.190, waveHz:0.30, drift:0.045, v:138, br:4.0, vAmp:0.18, aimT:1.5, aimN:3},
+  {mode:'twin', arms:3, step:0.058, dAng:0.130, v:148, br:4.0, flip:5.0, aimT:1.2, aimN:3}
+];
+function endureSpiral(e, o){
+  const R0=e.r*0.92;
+  e.spT=(e.spT||0)+o.step;
+  // この一発ぶん、腕をどれだけ回すか
+  let dA;
+  if(o.mode==='wave'){
+    // うねり: 巻く向きが正弦で滑らかに反転し、腕がS字を描く
+    dA = o.dAng*Math.sin(e.spT*o.waveHz*TAU) + (o.drift||0);
+  }else{
+    if(e.spFlip===undefined || e.spFlip<=0){  // 一定周期で回る向きが反転する
+      e.spDir=(e.spDir||1)*-1; e.spFlip=o.flip;
+    }
+    e.spFlip-=o.step;
+    dA = o.dAng*(e.spDir||1);
+  }
+  e.spA=(e.spA||0)+dA;
+  const v = o.vAmp ? o.v*(1+o.vAmp*Math.sin(e.spT*1.7*TAU)) : o.v;
+  const emit=(ang,hue)=>{
+    eBullets.push({
+      x:e.x+Math.cos(ang)*R0, y:e.y+Math.sin(ang)*R0,
+      vx:Math.cos(ang)*v, vy:Math.sin(ang)*v,
+      r:o.br, grazed:false, hue
+    });
+  };
+  if(o.mode==='twin'){
+    // 逆向きに回るもう一組を重ね、腕どうしが交差して格子状の通り道を作る
+    e.spB=(e.spB||0)-dA;
+    for(let k=0;k<o.arms;k++){
+      emit(e.spA + k/o.arms*TAU, 'mag');
+      emit(e.spB + k/o.arms*TAU + Math.PI/o.arms, 'vio');
+    }
+  }else{
+    for(let k=0;k<o.arms;k++) emit(e.spA + k/o.arms*TAU, (k%2===0)?'mag':'vio');
+  }
+  // 螺旋は中心から外へ向かうだけなので、本体の真上は安全地帯になってしまう。
+  // 一定間隔で自機狙いを挟み、居座って避けるのを防ぐ。
+  e.spAim=(e.spAim===undefined?o.aimT:e.spAim)-o.step;
+  if(e.spAim<=0){
+    e.spAim=o.aimT;
+    const a0=Math.atan2(player.y-e.y, player.x-e.x);
+    for(let i=0;i<o.aimN;i++){
+      const a=a0+(i-(o.aimN-1)/2)*0.15;
+      eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*185,vy:Math.sin(a)*185,
+        r:4, grazed:false, kind:'aim'});
+    }
+  }
+  e.fireT=o.step;
+}
+
+// 60秒すべてを螺旋で通す。10秒ごとに型が spin → wave → twin と巡り、
+// 一巡するたびに腕が増えて速くなる。
 function endureFire(e){
-  const span=ENDURE_SEC/ENDURE_SEQ.length;
-  const idx=Math.min(Math.floor((ENDURE_SEC-e.endureT)/span), ENDURE_SEQ.length-1);
-  if(idx!==e.endIdx){ e.endIdx=idx; e.fireT=0.9; return; }  // 型の切れ目にひと呼吸
-  e.rage=0.5; e.dz=1.25;                 // 耐久中は密度を固定(HPに引きずられない)
-  ENDURE_SEQ[idx](e, 150, 3);
+  const el=ENDURE_SEC-e.endureT;
+  const span=ENDURE_SEC/ENDURE_ARMS.length;
+  const i=Math.min(Math.floor(el/span), ENDURE_ARMS.length-1);
+  const key='s'+i;
+  if(key!==e.endKey){                 // 型の切れ目にひと呼吸
+    e.endKey=key;
+    e.fireT=0.75;
+    e.spT=0; e.spFlip=undefined;      // うねりと反転の位相を型ごとに仕切り直す
+    return;
+  }
+  endureSpiral(e, ENDURE_ARMS[i]);
 }
 function startEndure(e){
-  e.endureT=ENDURE_SEC; e.endIdx=-1; e.invul=true;
-  S.endureLock=true;                      // 耐久中はBREAKを封鎖する
-  eBullets.length=0; lasers.length=0;
+  e.endureT=ENDURE_SEC; e.endIdx=-1; e.endKey=null;
+  e.spA=0; e.spB=0; e.spT=0; e.spAim=undefined; e.spFlip=undefined; e.invul=true;
+  S.endureLock=true;                      // 耐久中はBREAKとショットを封じる
+  eBullets.length=0; lasers.length=0; bullets.length=0;
   S.shake=12; SFX.warn();
   popup(W/2, H*0.3, 'ENDURE '+ENDURE_SEC+'s', GOLD);
-  popup(W/2, H*0.3+28, 'BREAK 封鎖', MAGENTA);
+  popup(W/2, H*0.3+28, 'SHOT / BREAK 封鎖', MAGENTA);
+  popup(W/2, H*0.3-30, 'SPIRAL BARRIER', CYAN);
 }
 function endEndure(e){
   e.endureT=0; e.endured=true; e.invul=false;
@@ -1310,7 +1420,10 @@ function bossFire(e){
   // 怒り(rage): 残ゲージが減るほど 0→1 で上昇し、弾速・連射・密度に乗る
   const rem = Math.ceil(e.hp/(e.perBar||e.maxHp));
   e.rage = (e.bossBars>1) ? (e.bossBars-rem)/(e.bossBars-1) : 0;
-  e.dz = 1 + e.rage*0.6; // 密度係数(パターン側が参照)
+  // 密度係数。ステージが進むほど基礎値が上がる(旧: 全ステージ一律1.12)。
+  // 最終ボスがレーザー主体で最も薄くなっていた逆転を、ここで正す。
+  e.dz = (0.76 + (e.stage||1)*0.13) + e.rage*0.45;
+  if(e.mutated) e.dz *= 1.20;   // 変異(残り1/3)でさらに濃くなる
   const sp = (110 + Math.min(0.5+lv*0.2, 1.4)*70) * (1 + e.rage*0.22);
   // 各ボスは自分の形に特化した固有セットを使う(再来したボスも自分の弾幕を持ち込む)
   const set = BOSS_SETS[Math.min(e.bossType||0, BOSS_SETS.length-1)];
@@ -1332,6 +1445,8 @@ function bossFire(e){
   mutateVolley(e, from);
   e.fireT *= (1 - e.rage*0.25);  // ゲージが減るほど連射が加速
   if(e.purged) e.fireT*=0.9;     // 変身ボーナスはrageと重なるため緩和
+  // 弾数を密度係数で調整できない型(レーザー・編隊など)も、間隔を詰めて濃くする
+  e.fireT /= Math.max(1, (e.dz||1)*0.86);
 }
 
 // 撃破エフェクト: 形に沿った破片の散り方
@@ -1385,32 +1500,40 @@ function fireLaser(x,y,angle,w,opt){
 // ===== 火力(POWER)と得点倍率(MULT)の分離 =====
 // 倍率は被弾で×1.0に戻る(得点上の罰)。火力は段位として残り、被弾では1段しか落ちない。
 // これがないと、被弾した瞬間にDPSが 58.8 → 9.1 まで落ち、そのまま連続被弾する悪循環になる。
+// 段位は前方弾の本数そのもの。連射間隔は全段共通にしてある。
+// 段ごとに「弾数」だけが変わるので、上がったか落ちたかが必ず目で分かる
+// (以前は段位1と2がどちらも3発で、連射速度しか違わず区別できなかった)。
+const SHOT_RATE=0.085;
 const POWER_TIERS=[
-  {spread:0, rate:0.11 , at:0   },   // 0: 1発
-  {spread:1, rate:0.11 , at:2.5 },   // 1: 3発
-  {spread:1, rate:0.085, at:4   },   // 2: 3発・連射up
-  {spread:2, rate:0.085, at:6   }    // 3: 5発・連射up
+  {shots:1},   // 段位1: 前方1本
+  {shots:2},   // 段位2: 前方2本
+  {shots:3}    // 段位3: 前方3本
 ];
 const POWER_MAX=POWER_TIERS.length-1;
-function tierFromMult(m){
+// 段位は倍率ではなく、専用のグレイズ数で上がる。
+// 倍率に紐づけていた頃は、被弾で倍率が全損するせいで
+// 「1段落ちたのに復帰は最初から積み直し(120回)」になっていた。
+const POWER_AT=[0, 40, 100];           // 各段位に必要な累計グレイズ数
+function tierFromPg(pg){
   let k=0;
-  for(let i=0;i<POWER_TIERS.length;i++) if(m>=POWER_TIERS[i].at) k=i;
+  for(let i=0;i<POWER_AT.length;i++) if(pg>=POWER_AT[i]) k=i;
   return k;
 }
-// 倍率が伸びたぶんだけ段位も上がる(下がるのは被弾のときだけ)
 function syncPower(){
-  const tgt=tierFromMult(S.mult);
+  const tgt=tierFromPg(S.pg);
   if(tgt>S.power){
     S.power=tgt;
     S.maxPower=Math.max(S.maxPower,S.power);
     S.powerFlash=0.6;
     popup(player.x, player.y-62, 'POWER '+(S.power+1), CYAN);
+    SFX.multUp();
   }
 }
 function dropPower(){
   if(S.power>0){
     S.power--;
-    S.powerFlash=-0.8;                 // 負の値は「落ちた」表示
+    S.pg=POWER_AT[S.power];            // 1段ぶん戻すだけ(全損させない)
+    S.powerFlash=-0.8;
     popup(player.x, player.y-62, 'POWER DOWN', MAGENTA);
   }
 }
@@ -1418,13 +1541,14 @@ function dropPower(){
 function doGraze(px,py){
   S.grazeCount++;
   S.grazeFlash=0.22;
+  S.pg++;              // 段位専用の進捗(倍率と違って被弾で全損しない)
+  syncPower();
   SFX.graze();
   S.gauge = clamp(S.gauge + 0.09, 0, 1);
   if(S.gauge>=1){
     S.gauge=0;
     S.mult = Math.min(S.mult+0.5, 8);
     S.maxMult=Math.max(S.maxMult,S.mult);
-    syncPower();
     SFX.multUp();
     popup(player.x, player.y-44, '×'+S.mult.toFixed(1), GOLD);
     burst(player.x,player.y,GOLD,10,120);
@@ -1614,7 +1738,10 @@ function sprite(key,w,h,fn){
   return s;
 }
 const HUE={ mag:['255,45,120','92,5,36'], orn:['255,122,0','96,38,0'],
-            cyn:['0,229,255','0,64,84'], gld:['255,209,102','118,72,0'] };
+            cyn:['0,229,255','0,64,84'], gld:['255,209,102','118,72,0'],
+            // 螺旋のもう一方の腕。自機のシアンとは別系統の青紫にして、
+            // 「シアン=自機」の読み分けを壊さないようにしている
+            vio:['124,110,255','26,16,86'] };
 // 球体弾: 左上のハイライト → 本体色 → 右下の陰、外に淡いグロー
 function orbSprite(r,hue,grazed){
   const [rgb,drk]=HUE[hue];
@@ -1839,33 +1966,39 @@ function update(dt){
   // auto fire
   player.fireT-=dt;
   const tier = POWER_TIERS[clamp(S.power,0,POWER_MAX)];
-  const rate = tier.rate;
-  if(player.fireT<=0){
-    player.fireT=rate;
+  // 耐久弾幕の最中はショットを撃たない。どのみち無敵で当たらないので、
+  // 発射音と自機弾を消して「避けることだけに集中する60秒」にする。
+  if(player.fireT<=0 && !S.endureLock){
+    player.fireT=SHOT_RATE;
     SFX.shot();
-    const spread = tier.spread;
-    for(let i=-spread;i<=spread;i++){
-      bullets.push({x:player.x+i*7,y:player.y-10,vx:i*36,vy:-620,r:3});
+    // 前方弾: 本数を中心から左右対称に散らす(1本なら真上、2本なら左右)
+    const n=tier.shots;
+    for(let i=0;i<n;i++){
+      const off=i-(n-1)/2;
+      bullets.push({x:player.x+off*9, y:player.y-10, vx:off*30, vy:-620, r:3});
     }
-    // ホーミングミサイル: 1発おきに左右から発射
-    if(S.homingT>0){
-      player.homingTick=!player.homingTick;
-      if(player.homingTick){
-        for(const s of [-1,1]){
-          bullets.push({x:player.x+s*13,y:player.y+4,vx:s*260,vy:-300,r:3.5,homing:true});
-        }
+    // ホーミングミサイル: 常時装備。1発おきに左右から発射する。
+    // 金のアイテムを取ると8秒間、毎ショット発射になる(手数が倍)。
+    player.homingTick=!player.homingTick;
+    if(player.homingTick){
+      for(const s of [-1,1]){
+        bullets.push({x:player.x+s*13,y:player.y+4,vx:s*260,vy:-300,r:3.5,homing:true,life:2.4});
       }
     }
   }
-  if(S.homingT>0)S.homingT-=dt;
   if(S.powerFlash>0) S.powerFlash=Math.max(0,S.powerFlash-dt);
   else if(S.powerFlash<0) S.powerFlash=Math.min(0,S.powerFlash+dt);
 
   // player bullets (追尾弾は最寄りの敵へ旋回)
   for(const b of bullets){
     if(b.homing){
+      // 寿命: これが無いと、無敵の相手(耐久中のボス)の周りを延々と回り続け、
+      // 無敵が解けた瞬間に溜まった全弾が一斉に命中してしまう
+      b.life-=dt;
+      if(b.life<=0){ b.dead=true; continue; }
       let best=null,bd=Infinity;
       for(const e of enemies){
+        if(e.invul) continue;              // 無敵の相手は狙わない(当たらないので追う意味がない)
         const dx=e.x-b.x,dy=e.y-b.y,d=dx*dx+dy*dy;
         if(d<bd){bd=d;best=e;}
       }
@@ -1910,8 +2043,12 @@ function update(dt){
         }
         burst(player.x,player.y,CYAN,12,140);
       }else{
-        S.homingT=Math.min(S.homingT+8,16);
-        popup(player.x,player.y-40,'HOMING +8s',GOLD);
+        // 点アイテム: 得点は倍率に比例し、さらに画面の上で取るほど増える。
+        // 拾いに上がるほど敵弾の濃い場所へ入ることになる = リスクと見返りが釣り合う。
+        const hf = 1 + clamp(1 - it.y/H, 0, 1);        // 下端で1.0倍 → 上端で2.0倍
+        const g = Math.round(400 * S.mult * hf);
+        S.score += g;
+        popup(player.x, player.y-40, '+'+g, hf>1.5?PAPER:GOLD);
         burst(player.x,player.y,GOLD,12,140);
       }
     }
@@ -1952,6 +2089,8 @@ function update(dt){
       if(e.modeT<=0){ e.mode=(e.mode+1)%3; e.modeT=4.5; } // 3つの攻撃を巡回
       if(e.fireT<=0 && e.y>0){
         midBossFire(e);
+        // ステージが進むほど手数を詰める(STAGE1は等倍、STAGE6で約0.75倍の間隔)
+        e.fireT *= Math.max(0.75, 1.05 - (e.stage||1)*0.05);
       }
       // 自機弾の被弾
       for(const b of bullets){
@@ -2097,7 +2236,10 @@ function update(dt){
 
   // enemy bullets: graze & hit
   for(const b of eBullets){
-    b.x+=b.vx*dt;b.y+=b.vy*dt;
+    // hold を持つ弾は、その秒数だけ止まってから動き出す。
+    // 輪が出来上がるまで待たせることで「円がばばばっと埋まってから一斉に展開する」を作る。
+    if(b.hold>0){ b.hold-=dt; }
+    else { b.x+=b.vx*dt; b.y+=b.vy*dt; }
     const dx=b.x-player.x, dy=b.y-player.y, d2=dx*dx+dy*dy;
     // 被弾直前スロー: 至近距離+自機に向かう弾で発動
     if(S.inv<=0 && !b.warned && d2 < 22*22){
@@ -2111,22 +2253,11 @@ function update(dt){
       b.dead=true; hitPlayer(); continue;
     }
     // graze
+    // 以前はここに doGraze と同じ処理が複製されていて、段位の更新(syncPower)だけが
+    // 抜けていた。二重管理をやめ、グレイズの入口は doGraze 一本に統一する。
     if(!b.grazed && d2 < player.grazeR*player.grazeR){
       b.grazed=true;
-      S.grazeCount++;
-      S.grazeFlash=0.22;
-      SFX.graze();
-      S.gauge = clamp(S.gauge + 0.09, 0, 1);
-      if(S.gauge>=1){
-        S.gauge=0;
-        S.mult = Math.min(S.mult+0.5, 8);
-        S.maxMult=Math.max(S.maxMult,S.mult);
-        SFX.multUp();
-        popup(player.x, player.y-44, '×'+S.mult.toFixed(1), GOLD);
-        burst(player.x,player.y,GOLD,10,120);
-      }
-      S.score += Math.round(10*S.mult);
-      particles.push({x:b.x,y:b.y,vx:rnd(-30,30),vy:rnd(-30,30),life:.3,max:.3,color:CYAN});
+      doGraze(b.x, b.y);
     }
   }
   eBullets=eBullets.filter(b=>!b.dead && b.x>-20&&b.x<W+20&&b.y>-20&&b.y<H+20);
@@ -2420,19 +2551,22 @@ function draw(){
     ctx.save();
     ctx.translate(it.x,it.y);
     ctx.rotate(it.t*1.6);
-    const shape = isB ? (()=>ngonPath(4,13,0)) : (()=>ngonPath(6,11,0));
+    // BREAKは青い菱形、点アイテムは金の星。形で役割が分かるようにする
+    const shape = isB ? (()=>ngonPath(4,13,0)) : (()=>starPath(5,12,5.4,-Math.PI/2));
     extrude(shape,3,rgb);
-    ctx.fillStyle=faceGrad(isB?13:11,rgb,0.55,0.14);
+    ctx.fillStyle=faceGrad(isB?13:12,rgb,0.60,0.16);
     shape(); ctx.fill();
     ctx.strokeStyle=col; ctx.lineWidth=1.6;
     ctx.shadowColor=col; ctx.shadowBlur=LOWFX?0:(10+Math.sin(it.t*6)*4);
     shape(); ctx.stroke();
     ctx.rotate(-it.t*1.6);
     ctx.shadowBlur=0;
-    ctx.fillStyle=col;
-    ctx.font='700 10px "Avenir Next","Helvetica Neue",sans-serif';
-    ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(isB?'B':'H',0,1);
+    if(isB){
+      ctx.fillStyle=col;
+      ctx.font='700 10px "Avenir Next","Helvetica Neue",sans-serif';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('B',0,1);
+    }
     ctx.restore();
     ctx.textBaseline='alphabetic';
   }
@@ -2861,6 +2995,13 @@ function draw(){
       if(e.endureT>0){
         ctx.save();
         ctx.globalAlpha=1;
+        // 結界: 弾幕を囲う大きな白い円。ボスのグローを引き継ぐと赤い輪になるので影は切る
+        ctx.shadowBlur=0;
+        const bR=Math.min(W,H)*0.42/(1+Math.sin(e.t*0.6)*0.012);
+        ctx.strokeStyle='rgba(236,240,248,0.20)'; ctx.lineWidth=1.4;
+        ctx.beginPath(); ctx.arc(0,0,bR,0,TAU); ctx.stroke();
+        ctx.strokeStyle='rgba(236,240,248,0.06)'; ctx.lineWidth=6;
+        ctx.beginPath(); ctx.arc(0,0,bR,0,TAU); ctx.stroke();
         const q=clamp(e.endureT/ENDURE_SEC,0,1), rr=e.r*1.95;
         ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.lineWidth=4;
         ctx.beginPath(); ctx.arc(0,0,rr,0,TAU); ctx.stroke();
@@ -3049,7 +3190,7 @@ function draw(){
     if(b.kind==='aim')          blitRot(diamondSprite(b.grazed), b.x, b.y, Math.atan2(b.vy,b.vx));
     else if(b.kind==='needle')  blitRot(needleSprite(b.grazed),  b.x, b.y, Math.atan2(b.vy,b.vx));
     else if(b.kind==='sq')      blitRot(chipSprite(b.r*1.7,b.grazed), b.x, b.y, S.t*5);
-    else                        blitSprite(orbSprite(b.r,'mag',b.grazed), b.x, b.y);
+    else                        blitSprite(orbSprite(b.r, b.hue||'mag', b.grazed), b.x, b.y);
   }
 
   // ボス予告: 点滅するWARNING
@@ -3113,7 +3254,6 @@ const elScore=document.getElementById('score'),
       elGauge=document.getElementById('gauge'),
       elBombs=document.getElementById('bombs'),
       elBurstBtn=document.getElementById('burstBtn'),
-      elHoming=document.getElementById('homingHud'),
       elPower=document.getElementById('powerHud');
 elBurstBtn.addEventListener('pointerdown',e=>{e.stopPropagation();doBurst();});
 function updateHUD(){
@@ -3127,7 +3267,6 @@ function updateHUD(){
   elBurstBtn.classList.toggle('empty',S.bombs<=0 && !S.endureLock);
   elBurstBtn.classList.toggle('locked',!!S.endureLock);
   elBurstBtn.textContent = S.endureLock ? 'LOCKED' : 'BREAK';
-  elHoming.textContent = S.homingT>0 ? 'HOMING '+Math.ceil(S.homingT)+'s' : '';
   const pw=clamp(S.power,0,POWER_MAX);
   let bar=''; for(let i=0;i<=POWER_MAX;i++) bar += (i<=pw ? '▮' : '▯');
   elPower.textContent='POWER '+bar;
@@ -3229,7 +3368,7 @@ function devStart(opts){
   devFf.classList.add('hidden');
   document.body.classList.toggle('playing', !S.demo);
   S.running=true;
-  if(o.pow){ S.mult=8; S.maxMult=8; syncPower(); }
+  if(o.pow){ S.mult=8; S.maxMult=8; S.pg=POWER_AT[POWER_MAX]; syncPower(); }
   if(o.stage) devJump(o.stage, o.point||'wave');
 }
 
