@@ -244,7 +244,7 @@
   </div>
   <div class="side-foot">
     <div class="side-keys">ドラッグで移動 ／ SPACE・X で BREAK ／ ESC でポーズ</div>
-    <div class="side-build">BUILD 2026-09-09 v5.3</div>
+    <div class="side-build">BUILD 2026-09-09 v5.4</div>
   </div>
 </aside>
 
@@ -301,7 +301,7 @@
     <button class="start-btn sub" id="devGo">DEV START</button>
     <div class="dev-note">DEVプレイの記録はハイスコアに残りません</div>
   </div>
-  <div style="margin-top:14px;font-size:8px;letter-spacing:.3em;color:#3a4156">BUILD 2026-09-09 v5.3</div>
+  <div style="margin-top:14px;font-size:8px;letter-spacing:.3em;color:#3a4156">BUILD 2026-09-09 v5.4</div>
 </div>
 
 <div id="devHud" class="hidden">
@@ -339,7 +339,7 @@
 <button id="muteBtn">SOUND ON</button>
 
 <script>
-console.log('GRAZE//LINE build 2026-09-09 v5.3 (point items replace homing boost / stage-scaled density / endurance spirals / shots disabled during endurance / permanent homing / 1-2-3 shot tiers / thicker enemies / hidden dev stage select / break locked during endurance / power tiers + 6 stages + endurance / PC side panel / dimensional / data-entity enemies / 5 midbosses)');
+console.log('GRAZE//LINE build 2026-09-09 v5.4 (tougher early bosses / point items / stage-scaled density / endurance spirals / shots disabled during endurance / permanent homing / 1-2-3 shot tiers / thicker enemies / hidden dev stage select / break locked during endurance / power tiers + 6 stages + endurance / PC side panel / dimensional / data-entity enemies / 5 midbosses)');
 (() => {
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
@@ -478,9 +478,9 @@ const EXTENDS=[50000, 200000, 500000, 1000000]; // 残機+1のスコア閾値
 // midAt は配列も取れる(STAGE 6 は中ボスが2体)。rematch がある場合、その中ボスは
 // 過去のステージのボスが再来する(数値は bossType)。
 const STAGE_DEF=[
-  {waves:7,  bossBars:2,  midAt:4, curve:[0.7, 0.9, 1.05, 1.0, 0.85, 1.25]},
-  {waves:8,  bossBars:3,  midAt:5, curve:[0.7, 1.0, 1.15, 0.75, 1.0, 0.9, 1.35]},
-  {waves:10, bossBars:5,  midAt:6, curve:[0.7, 1.0, 1.25, 0.65, 1.2, 1.0, 0.85, 1.15, 1.4]},
+  {waves:7,  bossBars:4,  midAt:4, curve:[0.7, 0.9, 1.05, 1.0, 0.85, 1.25]},
+  {waves:8,  bossBars:5,  midAt:5, curve:[0.7, 1.0, 1.15, 0.75, 1.0, 0.9, 1.35]},
+  {waves:10, bossBars:6,  midAt:6, curve:[0.7, 1.0, 1.25, 0.65, 1.2, 1.0, 0.85, 1.15, 1.4]},
   {waves:13, bossBars:7,  midAt:7, curve:[0.7, 1.0, 1.2, 0.65, 1.15, 1.35, 1.0, 0.7, 1.1, 1.3, 0.75, 1.5]},
   {waves:16, bossBars:10, midAt:9, curve:[0.7, 1.0, 1.2, 0.65, 1.15, 1.35, 0.6, 1.25,
                                           1.0, 0.85, 1.2, 1.4, 0.65, 1.3, 1.6]},
